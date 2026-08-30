@@ -1,0 +1,473 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.PortChecker.PortCheckerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:viewmodels="clr-namespace:NetworkDiscoveryTool.UI.ViewModels"
+      mc:Ignorable="d"
+      d:DataContext="{d:DesignInstance Type=viewmodels:PortCheckerViewModel}"
+      Title="Port Checker"
+      Background="{DynamicResource PageBgBrush}">
+
+    <Grid>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,24">
+            <StackPanel MaxWidth="1360" HorizontalAlignment="Stretch">
+
+                <!-- ======================================================== -->
+                <!-- HEADER BAR: Title, Subtitle, Scan Control Actions       -->
+                <!-- ======================================================== -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Width="36" Height="36" CornerRadius="8" Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE8B9;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#0EA5E9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Port Checker &amp; Service Scanner" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="Fast multi-threaded TCP socket auditing, service identification &amp; banner grabbing" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Main Action Buttons -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Command="{Binding StartScanCommand}" Style="{StaticResource BtnPrimary}" Height="38" Padding="16,0" Margin="0,0,8,0"
+                                IsEnabled="{Binding IsScanning, Converter={StaticResource BooleanNotConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Start Scan" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding StopScanCommand}" Style="{StaticResource BtnSecondary}" Height="38" Padding="14,0" Margin="0,0,8,0"
+                                IsEnabled="{Binding IsScanning}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="#EF4444"/>
+                                <TextBlock Text="Stop" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Command="{Binding ClearResultsCommand}" Style="{StaticResource BtnGhost}" Height="38" Width="38" Margin="0,0,8,0" ToolTip="Clear Results">
+                            <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextMutedBrush}"/>
+                        </Button>
+
+                        <Button Command="{Binding ExportResultsCommand}" Style="{StaticResource BtnGhost}" Height="38" Width="38" ToolTip="Export Results (CSV/TXT)">
+                            <TextBlock Text="&#xE78C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextMutedBrush}"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ======================================================== -->
+                <!-- CONFIGURATION PANEL: Target Host, Presets, Ports, Params -->
+                <!-- ======================================================== -->
+                <Border Style="{StaticResource NetScopeCard}" Padding="20,18" Margin="0,0,0,20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Row 0: Inputs -->
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2.2*"/>
+                                <ColumnDefinition Width="1.8*"/>
+                                <ColumnDefinition Width="2.5*"/>
+                                <ColumnDefinition Width="1.2*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Target Host (Type Custom IP OR Select Discovered Device) -->
+                            <StackPanel Margin="0,0,16,0">
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Target IP / Hostname" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="Discovered Devices" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="130"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding TargetHost, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource NetScopeTextBox}"
+                                             Height="38"
+                                             FontSize="12"
+                                             FontWeight="SemiBold"
+                                             Padding="5,0"
+                                             Margin="0,0,6,0"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding TargetHistory}"
+                                              SelectedItem="{Binding SelectedTargetHistoryItem}"
+                                              Style="{StaticResource NetScopeCombo}"
+                                              Height="38"
+                                              FontSize="11"
+                                              ToolTip="Select discovered device from network"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Preset Dropdown -->
+                            <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                                <TextBlock Text="Port Preset Profile" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
+                                <ComboBox ItemsSource="{Binding Presets}"
+                                          SelectedItem="{Binding SelectedPreset}"
+                                          Style="{StaticResource NetScopeCombo}"
+                                          Height="38"/>
+                            </StackPanel>
+
+                            <!-- Custom Ports List -->
+                            <StackPanel Grid.Column="2" Margin="0,0,16,0">
+                                <TextBlock Text="Target Ports (Comma separated or Range)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
+                                <TextBox Text="{Binding CustomPortsInput, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource NetScopeTextBox}"
+                                         Height="38"/>
+                            </StackPanel>
+
+                            <!-- Timeout & Threads -->
+                            <Grid Grid.Column="3">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Text="Timeout" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
+                                    <TextBox Text="{Binding TimeoutMs, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource NetScopeTextBox}"
+                                             Height="38" TextAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Threads" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,6"/>
+                                    <TextBox Text="{Binding MaxConcurrency, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource NetScopeTextBox}"
+                                             Height="38" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <!-- Row 1: Live Progress Bar (Visible during scanning) -->
+                        <Grid Grid.Row="1" Margin="0,16,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat={}{0}%}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </Grid>
+                            <ProgressBar Grid.Row="1" Value="{Binding Progress}" Minimum="0" Maximum="100" Height="5"
+                                         Background="#101827" Foreground="#0EA5E9" BorderThickness="0">
+                                <ProgressBar.Clip>
+                                    <RectangleGeometry Rect="0,0,1360,5" RadiusX="3" RadiusY="3"/>
+                                </ProgressBar.Clip>
+                            </ProgressBar>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ======================================================== -->
+                <!-- STATS / KPI SUMMARY CARDS                                -->
+                <!-- ======================================================== -->
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Total Scanned -->
+                    <Border Grid.Column="0" Style="{StaticResource NetScopeCard}" Padding="16,14" Margin="0,0,10,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Total Scanned" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="&#xE7C3;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <TextBlock Text="{Binding TotalScannedCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Ports processed" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Open Ports (Success Green) -->
+                    <Border Grid.Column="1" Style="{StaticResource NetScopeCard}" Padding="16,14" Margin="0,0,10,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Open Ports" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#10B981" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <TextBlock Text="{Binding OpenCount}" FontSize="24" FontWeight="Bold" Foreground="#10B981"/>
+                            <TextBlock Text="Accessible services" FontSize="10" Foreground="#10B981" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Closed Ports (Red) -->
+                    <Border Grid.Column="2" Style="{StaticResource NetScopeCard}" Padding="16,14" Margin="0,0,10,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Closed Ports" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#EF4444" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <TextBlock Text="{Binding ClosedCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Connection refused" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Filtered / Timeout (Amber) -->
+                    <Border Grid.Column="3" Style="{StaticResource NetScopeCard}" Padding="16,14" Margin="0,0,10,0">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Filtered / Timeout" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="#F59E0B" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <TextBlock Text="{Binding FilteredCount}" FontSize="24" FontWeight="Bold" Foreground="#F59E0B"/>
+                            <TextBlock Text="No response (Firewalled)" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Avg Latency & Scan Time -->
+                    <Border Grid.Column="4" Style="{StaticResource NetScopeCard}" Padding="16,14">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Avg Latency / Time" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="&#xE916;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding AvgLatencyMs, StringFormat={}{0}ms}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding ScanDurationText, StringFormat={} • {0}}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom" Margin="4,0,0,3"/>
+                            </StackPanel>
+                            <TextBlock Text="Round trip response" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- ======================================================== -->
+                <!-- RESULTS TABLE & FILTER BAR                               -->
+                <!-- ======================================================== -->
+                <Border Style="{StaticResource NetScopeCard}" Padding="0" Margin="0,0,0,20">
+                    <StackPanel>
+                        <!-- Table Top Controls (Search + State Filter) -->
+                        <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="18,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="280"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Search Filter with Icon & Placeholder -->
+                                <Border Width="260" Height="34" CornerRadius="8" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" HorizontalAlignment="Left">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1" Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" VerticalContentAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" IsHitTestVisible="False" Text="Filter by port, service, banner..." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SearchFilter}" Value="">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding SearchFilter}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Filter State Buttons: All | Open Only | Closed Only -->
+                                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                    <!-- All -->
+                                    <Button Command="{Binding SetFilterStateCommand}" CommandParameter="All"
+                                             Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,8,0" Cursor="Hand">
+                                        <Border CornerRadius="6" Padding="12,5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource InputBgBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFilterAllSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource AccentMutedBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="All (" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding TotalScannedCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                                <TextBlock Text=")" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
+
+                                    <!-- Open Only -->
+                                    <Button Command="{Binding SetFilterStateCommand}" CommandParameter="Open Only"
+                                             Background="Transparent" BorderThickness="0" Padding="0" Margin="0,0,8,0" Cursor="Hand">
+                                        <Border CornerRadius="6" Padding="12,5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource InputBgBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFilterOpenSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource SuccessBgBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Open Only (" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding OpenCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                                <TextBlock Text=")" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
+
+                                    <!-- Closed Only -->
+                                    <Button Command="{Binding SetFilterStateCommand}" CommandParameter="Closed Only"
+                                             Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand">
+                                        <Border CornerRadius="6" Padding="12,5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource InputBgBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFilterClosedSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource DangerBgBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                                        </DataTrigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="6" Height="6" Fill="{DynamicResource DangerBrush}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Closed Only (" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                <TextBlock Text="{Binding ClosedCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}"/>
+                                                <TextBlock Text=")" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Table Header -->
+                        <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="18,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="110"/>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="PORT" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Grid.Column="1" Text="PROTOCOL" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Grid.Column="2" Text="SERVICE / APPLICATION" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Grid.Column="3" Text="STATE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Grid.Column="4" Text="LATENCY" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Grid.Column="5" Text="SERVICE BANNER / SIGNATURE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Table Rows -->
+                        <ItemsControl ItemsSource="{Binding FilteredResults}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="18,11">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource HoverBgBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="100"/>
+                                                <ColumnDefinition Width="80"/>
+                                                <ColumnDefinition Width="220"/>
+                                                <ColumnDefinition Width="110"/>
+                                                <ColumnDefinition Width="100"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Port Number -->
+                                            <TextBlock Grid.Column="0" Text="{Binding Port}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+
+                                            <!-- Protocol -->
+                                            <TextBlock Grid.Column="1" Text="{Binding Protocol}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+
+                                            <!-- Service -->
+                                            <TextBlock Grid.Column="2" Text="{Binding Service}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                            <!-- State Badge -->
+                                            <Border Grid.Column="3" Background="{Binding StateBg}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="6" Height="6" Fill="{Binding StateColor}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding State}" FontSize="11" FontWeight="Bold" Foreground="{Binding StateColor}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- Latency -->
+                                            <TextBlock Grid.Column="4" Text="{Binding LatencyText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+
+                                            <!-- Banner -->
+                                            <TextBlock Grid.Column="5" Text="{Binding Banner}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" FontFamily="Consolas, Cascadia Code" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Empty State Indicator -->
+                        <Border Padding="40" Visibility="{Binding HasNoResults, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE8B9;" FontFamily="Segoe MDL2 Assets" FontSize="36" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                <TextBlock Text="No Port Scan Results" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock Text="Select a target host and click 'Start Scan' to begin auditing TCP endpoints." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Page>

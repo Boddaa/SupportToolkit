@@ -1,0 +1,438 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.PingTool.PingToolPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+      Title="Ping Tool"
+      Background="{DynamicResource PageBgBrush}">
+
+    <Page.Resources>
+        <Style x:Key="ShadowlessCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+
+        <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource ShadowlessCard}">
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="TerminalBtn" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="16,0"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="md:ButtonAssist.CornerRadius" Value="8"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.85"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.7"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.35"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================================ -->
+        <!-- TITLE                                       -->
+        <!-- ============================================ -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <TextBlock Text="&#x2771; Ping Tool" Style="{StaticResource HeadingXL}"/>
+            <Ellipse Width="10" Height="10" Margin="14,18,0,0">
+                <Ellipse.Style>
+                    <Style TargetType="Ellipse">
+                        <Setter Property="Fill" Value="{DynamicResource TextMutedBrush}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Ellipse.Style>
+            </Ellipse>
+            <TextBlock Text="{Binding ElapsedTime, StringFormat='{}  {0}'}" VerticalAlignment="Bottom"
+                       FontSize="14" FontFamily="Consolas" Foreground="{DynamicResource TextSecondaryBrush}"
+                       Margin="8,0,0,4"/>
+        </StackPanel>
+
+        <!-- ============================================ -->
+        <!-- INPUT CARD                                   -->
+        <!-- ============================================ -->
+        <Border Grid.Row="1" Style="{StaticResource ShadowlessCard}" Padding="20" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="70"/>
+                        <ColumnDefinition Width="80"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Host" Style="{StaticResource Label}" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" Text="{Binding TargetHost, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource TxtBox}" Margin="8,0"/>
+                    <TextBlock Grid.Column="2" Text="Timeout" Style="{StaticResource Label}"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBox Grid.Column="3" Text="{Binding Timeout}" Style="{StaticResource TxtBox}" Margin="8,0"/>
+                    <TextBlock Grid.Column="4" Text="Count" Style="{StaticResource Label}"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBox Grid.Column="5" Text="{Binding Count}" Style="{StaticResource TxtBox}" Margin="8,0,0,0"/>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                    <Button Command="{Binding PingCommand}" Content="&#x25B6; Start"
+                            Style="{StaticResource TerminalBtn}" Background="{DynamicResource SuccessBrush}"
+                            Width="110"
+                            IsEnabled="{Binding IsRunning, Converter={StaticResource BooleanNotConverter}}"/>
+                    <Button Command="{Binding StopPingCommand}" Content="&#x25A0; Stop"
+                            Style="{StaticResource TerminalBtn}" Background="{DynamicResource DangerBrush}"
+                            Width="100" Margin="8,0,0,0"
+                            IsEnabled="{Binding CanStop}"/>
+                    <Button Command="{Binding ClearResultsCommand}" Content="&#x2715; Clear"
+                            Style="{StaticResource BtnGhost}" Width="90" Margin="12,0,0,0"/>
+                    <Button Command="{Binding CopyResultsCommand}" Content="&#x1F4CB; Copy"
+                            Style="{StaticResource BtnGhost}" Width="90" Margin="8,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- ============================================ -->
+        <!-- STATUS MESSAGE                              -->
+        <!-- ============================================ -->
+        <Border Grid.Row="2" Margin="0,0,0,10"
+                Background="{DynamicResource InfoBgBrush}" Padding="12,8"
+                CornerRadius="6" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+            <TextBlock Text="{Binding StatusMessage}" FontSize="13"
+                       Foreground="{DynamicResource InfoBrush}"/>
+        </Border>
+
+        <!-- ============================================ -->
+        <!-- STATISTICS CARDS                             -->
+        <!-- ============================================ -->
+        <Grid Grid.Row="3" Margin="0,0,0,12" IsHitTestVisible="False">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <Border Style="{StaticResource StatCard}" Margin="4,0,4,0">
+                <StackPanel>
+                    <TextBlock Text="AVG LATENCY" Style="{StaticResource Caption}"/>
+                    <TextBlock Style="{StaticResource Body}" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0">
+                        <TextBlock.Text>
+                            <Binding Path="AverageLatency" StringFormat="{}{0:F0} ms"/>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBlock Text="{Binding TotalReceived, StringFormat='{}{0} replies'}"
+                               Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource StatCard}" Margin="4,0,4,0">
+                <StackPanel>
+                    <TextBlock Text="PACKET LOSS" Style="{StaticResource Caption}"/>
+                    <TextBlock Text="{Binding PacketLossPercent}" Style="{StaticResource Body}"
+                               FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource DangerBrush}" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding TotalLost, StringFormat='{}{0} lost'}"
+                               Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource StatCard}" Margin="4,0,4,0">
+                <StackPanel>
+                    <TextBlock Text="MIN LATENCY" Style="{StaticResource Caption}"/>
+                    <TextBlock Style="{StaticResource Body}" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0">
+                        <TextBlock.Text>
+                            <Binding Path="MinLatency" StringFormat="{}{0} ms"/>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBlock Text="fastest reply" Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="3" Style="{StaticResource StatCard}" Margin="4,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="MAX LATENCY" Style="{StaticResource Caption}"/>
+                    <TextBlock Style="{StaticResource Body}" FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0">
+                        <TextBlock.Text>
+                            <Binding Path="MaxLatency" StringFormat="{}{0} ms"/>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <TextBlock Text="slowest reply" Style="{StaticResource Caption}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ============================================ -->
+        <!-- LIVE CONSOLE (Terminal Output)               -->
+        <!-- ============================================ -->
+        <Border Grid.Row="4" CornerRadius="8" BorderThickness="1"
+                BorderBrush="{DynamicResource CardBorderBrush}" Margin="0,0,0,12"
+                MinHeight="160">
+            <Border.Background>
+                <SolidColorBrush Color="#0A0E14"/>
+            </Border.Background>
+
+            <Grid>
+                <ListBox x:Name="ConsoleList" ItemsSource="{Binding Results}"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         VirtualizingPanel.ScrollUnit="Pixel"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         Padding="0">
+                    <ListBox.Resources>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="Transparent"/>
+                        <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#E6EDF3"/>
+                    </ListBox.Resources>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Padding" Value="0"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBoxItem">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderThickness="0"
+                                                Padding="12,3">
+                                            <ContentPresenter/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSuccess}" Value="True">
+                                    <Setter Property="Background" Value="#0A0E14"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                    <Setter Property="Background" Value="#0E1215"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="16"/>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="90"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="{Binding Seq, StringFormat='{}#{0}'}"
+                                           Foreground="#636D7D" FontFamily="Consolas" FontSize="12"
+                                           VerticalAlignment="Center"/>
+
+                                <Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+
+                                <TextBlock Grid.Column="2" Text="{Binding IP}"
+                                           Foreground="#E6EDF3" FontFamily="Consolas" FontSize="12"
+                                           VerticalAlignment="Center"/>
+
+                                <TextBlock Grid.Column="3" FontFamily="Consolas" FontSize="12"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                            <Setter Property="Text">
+                                                <Setter.Value>
+                                                    <Binding Path="LatencyMs" StringFormat="{}{0} ms"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                    <Setter Property="Text" Value="&#x2717; failed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Grid.Column="4" FontFamily="Consolas" FontSize="12"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#636D7D"/>
+                                            <Setter Property="Text">
+                                                <Setter.Value>
+                                                    <Binding Path="TTL" StringFormat="TTL={0}"/>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                                    <Setter Property="Foreground" Value="#636D7D"/>
+                                                    <Setter Property="Text" Value="---"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <TextBlock Grid.Column="5" FontFamily="Consolas" FontSize="11"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#636D7D"/>
+                                            <Setter Property="Text" Value="{Binding Timestamp}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                                    <Setter Property="ToolTip" Value="{Binding Error}"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Placeholder: visible only when Results.Count == 0 -->
+                <TextBlock Text="&#x2771; Enter a host and press Start to begin pinging..."
+                           Foreground="#4A5568" FontFamily="Consolas" FontSize="13"
+                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                           IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Results.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <Border VerticalAlignment="Top" Height="2">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ============================================ -->
+        <!-- RESPONSE TIMELINE                            -->
+        <!-- ============================================ -->
+        <Border Grid.Row="5" Style="{StaticResource ShadowlessCard}" Padding="20">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                    <TextBlock Text="RESPONSE TIMELINE" Style="{StaticResource CardTitle}" Margin="0"/>
+                    <TextBlock Text="{Binding Results.Count, StringFormat='{}{0} pings'}"
+                               Style="{StaticResource Caption}" VerticalAlignment="Bottom" Margin="10,0,0,1"/>
+                </StackPanel>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Results}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="20" Height="28" Margin="2,0" CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+                                            <Setter Property="Opacity" Value="0.7"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSuccess}" Value="False">
+                                                    <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                                    <Setter Property="Opacity" Value="0.6"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ToolTipService.ToolTip>
+                                        <ToolTip Style="{StaticResource Tooltip}">
+                                            <StackPanel>
+                                                <TextBlock>
+                                                    <Run Text="#"/>
+                                                    <Run Text="{Binding Seq}"/>
+                                                    <Run Text=" "/>
+                                                    <Run Text="{Binding IP}"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding LatencyMs, StringFormat='{}Latency: {0} ms'}"/>
+                                                <TextBlock Text="{Binding Timestamp, StringFormat='{}Time: {0}'}"/>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </ToolTipService.ToolTip>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</Page>

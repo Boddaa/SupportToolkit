@@ -1,0 +1,728 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.WindowsServices.WindowsServicesPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+      xmlns:models="clr-namespace:NetworkDiscoveryTool.UI.Models"
+      Title="Service Manager"
+      Background="{DynamicResource PageBgBrush}"
+      UseLayoutRounding="True"
+      SnapsToDevicePixels="True"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      RenderOptions.ClearTypeHint="Enabled"
+      Loaded="Page_Loaded">
+
+    <Page.Resources>
+        <!-- KPI Card Button Style -->
+        <Style x:Key="KpiCardBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Cyber Table Action Button -->
+        <Style x:Key="CyberActionBtn" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="md:ButtonAssist.CornerRadius" Value="6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.75"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3"/>
+                    <Setter Property="Cursor" Value="No"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
+
+    <Grid>
+        <!-- Top Loading Indicator -->
+        <ProgressBar Style="{StaticResource LoadingSpinner}"
+                     Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
+                     VerticalAlignment="Top" Panel.ZIndex="20"/>
+
+        <!-- Main Page Layout -->
+        <Grid Margin="28,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ============================================================ -->
+            <!-- 1. HERO HEADER                                               -->
+            <!-- ============================================================ -->
+            <Border Style="{StaticResource NetScopeCard}" Padding="20,16" Margin="0,0,0,18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Avatar Icon -->
+                    <Border Width="50" Height="50" CornerRadius="12"
+                            Background="{DynamicResource AccentMutedBrush}"
+                            BorderBrush="{DynamicResource AccentBrush}"
+                            BorderThickness="1.5" Margin="0,0,16,0" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="24"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Title & Description -->
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Windows Services Manager" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,12,0"/>
+                            <Border CornerRadius="12" Padding="10,3" Background="{DynamicResource SuccessBgBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Live Controller" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Inspect, control, start, stop, and monitor background Windows OS services and system daemons"
+                                   FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <!-- Action Toolbar -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Refresh Button -->
+                        <Button Command="{Binding LoadServicesCommand}"
+                                Style="{StaticResource BtnPrimary}" Height="36" Padding="16,0"
+                                IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanNotConverter}}"
+                                ToolTip="Refresh all Windows services state">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="White" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Refresh Services" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Clear / Reset Filters -->
+                        <Button Command="{Binding ClearFiltersCommand}"
+                                Style="{StaticResource BtnSecondary}" Height="36" Padding="14,0" Margin="8,0,0,0"
+                                ToolTip="Reset search and filters">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE894;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Reset Filters" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ -->
+            <!-- 2. INTERACTIVE KPI METRIC CARDS                              -->
+            <!-- ============================================================ -->
+            <Grid Grid.Row="1" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 1. TOTAL SERVICES -->
+                <Button Grid.Column="0" Command="{Binding FilterAllCommand}" Style="{StaticResource KpiCardBtn}" Margin="0,0,8,0" ToolTip="Click to show all services">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentMutedBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="TOTAL SERVICES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{Binding TotalCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,2"/>
+                        <TextBlock Text="All registered services" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 2. RUNNING SERVICES -->
+                <Button Grid.Column="1" Command="{Binding FilterRunningCommand}" Style="{StaticResource KpiCardBtn}" Margin="4,0,4,0" ToolTip="Click to show running services only">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SuccessBgBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="RUNNING" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{Binding RunningCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,2"/>
+                        <TextBlock Text="Active &amp; operational" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 3. STOPPED SERVICES -->
+                <Button Grid.Column="2" Command="{Binding FilterStoppedCommand}" Style="{StaticResource KpiCardBtn}" Margin="4,0,4,0" ToolTip="Click to show stopped services only">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource DangerBgBrush}" BorderBrush="{DynamicResource DangerBorderBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="STOPPED" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{Binding StoppedCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" Margin="0,0,0,2"/>
+                        <TextBlock Text="Inactive background tasks" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- 4. DISABLED SERVICES -->
+                <Button Grid.Column="3" Command="{Binding FilterDisabledCommand}" Style="{StaticResource KpiCardBtn}" Margin="8,0,0,0" ToolTip="Click to show disabled services only">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="DISABLED" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{Binding DisabledCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,2"/>
+                        <TextBlock Text="Startup disabled" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- ============================================================ -->
+            <!-- 3. SEARCH & FILTER CONTROLS TOOLBAR                          -->
+            <!-- ============================================================ -->
+            <Border Grid.Row="2" Style="{StaticResource NetScopeCard}" Padding="16,12" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Search Input Box -->
+                    <Border Background="{DynamicResource InputBgBrush}"
+                            BorderBrush="{DynamicResource InputBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Height="36" Padding="12,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                       Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBox Grid.Column="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="Transparent" BorderThickness="0"
+                                     Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12"
+                                     VerticalAlignment="Center" md:HintAssist.Hint="Search service or display name..."
+                                     md:HintAssist.Foreground="{DynamicResource TextMutedBrush}"/>
+                            <Button Grid.Column="2" Command="{Binding ClearFiltersCommand}"
+                                    Style="{StaticResource BtnGhost}" Width="20" Height="20" Padding="0"
+                                    Visibility="{Binding SearchText.Length, Converter={StaticResource IntToVisibilityConverter}}"
+                                    ToolTip="Clear search">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Status Filter ComboBox -->
+                    <ComboBox Grid.Column="1" Margin="10,0,0,0" Height="36" FontSize="12"
+                              Style="{StaticResource CmbBox}"
+                              SelectedIndex="{Binding StatusFilter, Converter={StaticResource EnumToIntConverter}}">
+                        <ComboBoxItem Content="All Status"/>
+                        <ComboBoxItem Content="🟢 Running Only"/>
+                        <ComboBoxItem Content="🔴 Stopped Only"/>
+                    </ComboBox>
+
+                    <!-- Startup Filter ComboBox -->
+                    <ComboBox Grid.Column="2" Margin="10,0,0,0" Height="36" FontSize="12"
+                              Style="{StaticResource CmbBox}"
+                              SelectedIndex="{Binding StartupFilter, Converter={StaticResource EnumToIntConverter}}">
+                        <ComboBoxItem Content="All Startup Modes"/>
+                        <ComboBoxItem Content="⚡ Automatic"/>
+                        <ComboBoxItem Content="⚙️ Manual"/>
+                        <ComboBoxItem Content="🚫 Disabled"/>
+                    </ComboBox>
+
+                    <!-- Active Counter Badge -->
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border CornerRadius="8" Background="{DynamicResource AccentMutedBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="12,6">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Showing: " FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding FilteredServices.Count}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                <TextBlock Text=" / " FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding TotalCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text=" Services" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ -->
+            <!-- 4. ERROR BANNER                                              -->
+            <!-- ============================================================ -->
+            <Border Grid.Row="3" Background="{DynamicResource DangerBgBrush}"
+                    Padding="14,12" CornerRadius="8" Margin="0,0,0,16"
+                    BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource DangerBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ErrorMessage}" FontSize="12" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Command="{Binding LoadServicesCommand}" Content="Retry" Style="{StaticResource BtnDanger}" Height="28" Padding="12,0" Margin="12,0,0,0"/>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ -->
+            <!-- 5. SERVICES DATA GRID                                        -->
+            <!-- ============================================================ -->
+            <Border Grid.Row="4" Style="{StaticResource NetScopeCard}" Padding="0" MinHeight="300">
+                <DataGrid x:Name="ServicesGrid" ItemsSource="{Binding FilteredServices}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          Style="{StaticResource DGrid}"
+                          RowHeight="48"
+                          RowBackground="{DynamicResource CardBgBrush}"
+                          AlternatingRowBackground="{DynamicResource CardBgAltBrush}"
+                          MouseDoubleClick="DataGrid_MouseDoubleClick">
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}">
+                            <Setter Property="Padding" Value="16,0"/>
+                            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="ColumnHeader_Click"/>
+                        </Style>
+                        <Style TargetType="DataGridCell" BasedOn="{StaticResource DGridCell}">
+                            <Setter Property="Padding" Value="0"/>
+                        </Style>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource DGridRow}"/>
+                    </DataGrid.Resources>
+                    <DataGrid.Columns>
+
+                        <!-- Service Name (Monospace Code Badge) -->
+                        <DataGridTemplateColumn Header="Service Name" SortMemberPath="Name" Width="210">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,8,0">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="{DynamicResource AccentMutedBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="0,0,10,0">
+                                            <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" FontFamily="Consolas, Cascadia Code" FontSize="13" FontWeight="Bold"
+                                                   Foreground="#38BDF8" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Display Name -->
+                        <DataGridTemplateColumn Header="Display Title" SortMemberPath="DisplayName" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               VerticalAlignment="Center" Margin="16,0" TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding DisplayName}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Status Pill Badge -->
+                        <DataGridTemplateColumn Header="Status" SortMemberPath="StatusCode" Width="140">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="12" Padding="12,5" Margin="16,0,0,0"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#2510B981"/>
+                                                <Setter Property="BorderBrush" Value="#6010B981"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                        <Setter Property="Background" Value="#25EF4444"/>
+                                                        <Setter Property="BorderBrush" Value="#60EF4444"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Paused">
+                                                        <Setter Property="Background" Value="#25F59E0B"/>
+                                                        <Setter Property="BorderBrush" Value="#60F59E0B"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="7" Height="7" VerticalAlignment="Center" Margin="0,0,7,0">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="#10B981"/>
+                                                        <Style.Triggers>
+                                                             <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                                <Setter Property="Fill" Value="#EF4444"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Paused">
+                                                                <Setter Property="Fill" Value="#F59E0B"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="{Binding Status}" FontSize="12" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#34D399"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                                <Setter Property="Foreground" Value="#F87171"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Paused">
+                                                                <Setter Property="Foreground" Value="#FBBF24"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Startup Type Badge -->
+                        <DataGridTemplateColumn Header="Startup Mode" SortMemberPath="StartupType" Width="130">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="6" Padding="10,4" Margin="16,0,0,0"
+                                            Background="#1E293B"
+                                            BorderBrush="#334155"
+                                            BorderThickness="1"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding StartupType}" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#F1F5F9"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Actions (Start, Stop, Restart) -->
+                        <DataGridTemplateColumn Header="Operations" Width="270">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                                        <!-- Start -->
+                                        <Button Style="{StaticResource CyberActionBtn}"
+                                                Background="#1810B981"
+                                                Foreground="#34D399"
+                                                BorderBrush="#5010B981"
+                                                Height="30" Padding="12,0"
+                                                Command="{Binding DataContext.StartServiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanStart}"
+                                                ToolTip="Start service">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Start" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Stop -->
+                                        <Button Style="{StaticResource CyberActionBtn}"
+                                                Background="#18EF4444"
+                                                Foreground="#F87171"
+                                                BorderBrush="#50EF4444"
+                                                Height="30" Padding="12,0"
+                                                Margin="8,0,0,0"
+                                                Command="{Binding DataContext.StopServiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanExecuteStop}"
+                                                ToolTip="Stop service">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Stop" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Restart -->
+                                        <Button Style="{StaticResource CyberActionBtn}"
+                                                Background="#18F59E0B"
+                                                Foreground="#FBBF24"
+                                                BorderBrush="#50F59E0B"
+                                                Height="30" Padding="12,0"
+                                                Margin="8,0,0,0"
+                                                Command="{Binding DataContext.RestartServiceCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanRestart}"
+                                                ToolTip="Restart service">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Restart" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Inspect Button -->
+                        <DataGridTemplateColumn Header="" Width="50">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Width="30" Height="30"
+                                            Style="{StaticResource BtnGhost}"
+                                            Padding="0" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                            Command="{Binding DataContext.ShowDetailCommand, RelativeSource={RelativeSource AncestorType={x:Type Page}}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="Inspect full service specs and path">
+                                        <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource AccentBrush}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+        </Grid>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 1: SERVICE DETAILS DRAWER (Full Page Overlay)          -->
+        <!-- ============================================================ -->
+        <Grid Panel.ZIndex="100"
+              Visibility="{Binding ShowDetail, Converter={StaticResource BoolToVisibilityConverter}}">
+            <!-- Backdrop -->
+            <Border Background="{DynamicResource OverlayBgBrush}" Panel.ZIndex="100">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding CloseDetailCommand}"/>
+                </Border.InputBindings>
+            </Border>
+
+            <!-- Drawer Panel -->
+            <Border HorizontalAlignment="Right" Width="520" Panel.ZIndex="101"
+                    Background="{DynamicResource CardBgBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Drawer Header -->
+                    <Border Background="{DynamicResource SurfaceBgBrush}" Padding="24,20" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Width="44" Height="44" CornerRadius="10" Background="{DynamicResource AccentMutedBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.5" Margin="0,0,14,0">
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedServiceDetail.DisplayName}"
+                                           FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                           TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding SelectedServiceDetail.Name}"
+                                           FontFamily="Consolas, Cascadia Code" FontSize="12"
+                                           Foreground="{DynamicResource AccentBrush}" Margin="0,3,0,0"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="2" Command="{Binding CloseDetailCommand}"
+                                    Width="32" Height="32"
+                                    Style="{StaticResource BtnGhost}" Padding="0"
+                                    Foreground="{DynamicResource TextMutedBrush}">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Drawer Body -->
+                    <ScrollViewer Grid.Row="1" Padding="24,20" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+
+                            <!-- Status Badge -->
+                            <Border CornerRadius="12" Padding="14,6" BorderThickness="1"
+                                    HorizontalAlignment="Left" Margin="0,0,0,20">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{DynamicResource SuccessBgBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Stopped">
+                                                <Setter Property="Background" Value="{DynamicResource DangerBgBrush}"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Paused">
+                                                <Setter Property="Background" Value="{DynamicResource WarningBgBrush}"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource WarningBorderBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Stopped">
+                                                        <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Paused">
+                                                        <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding SelectedServiceDetail.Status}" FontSize="13" FontWeight="Bold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Stopped">
+                                                        <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SelectedServiceDetail.Status}" Value="Paused">
+                                                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Forensic Attributes Grid -->
+                            <Border Style="{StaticResource NetScopeCard}" Padding="16" Margin="0,0,0,16">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Service Name -->
+                                    <TextBlock Text="System Name" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SelectedServiceDetail.Name}"
+                                               FontFamily="Consolas, Cascadia Code" FontSize="12" FontWeight="Bold"
+                                               Foreground="{DynamicResource AccentBrush}" Margin="0,0,0,12"/>
+
+                                    <!-- Startup Type -->
+                                    <TextBlock Grid.Row="1" Text="Startup Mode" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedServiceDetail.StartupType}"
+                                               FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+                                    <!-- Start Name / Account -->
+                                    <TextBlock Grid.Row="2" Text="Logon Account" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedServiceDetail.StartName}"
+                                               FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+                                    <!-- PID -->
+                                    <TextBlock Grid.Row="3" Text="Process ID (PID)" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedServiceDetail.ProcessId}"
+                                               FontSize="12" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,0,12"/>
+
+                                    <!-- Service Type -->
+                                    <TextBlock Grid.Row="4" Text="Service Type" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedServiceDetail.ServiceType}"
+                                               FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Service Description -->
+                            <Border Style="{StaticResource NetScopeCard}" Padding="16" Margin="0,0,0,16">
+                                <StackPanel>
+                                    <TextBlock Text="Description" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                                    <TextBlock Text="{Binding SelectedServiceDetail.Description, FallbackValue='No description provided by service publisher.'}"
+                                               FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}"
+                                               TextWrapping="Wrap" LineHeight="18"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Executable Binary Path -->
+                            <Border Style="{StaticResource NetScopeCard}" Padding="16" Margin="0,0,0,24">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Binary Executable Path" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1" Command="{Binding CopyTextCommand}" CommandParameter="{Binding SelectedServiceDetail.PathName}"
+                                                Style="{StaticResource BtnGhost}" Height="24" Padding="8,0" ToolTip="Copy path to clipboard">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource AccentBrush}" Margin="0,0,4,0"/>
+                                                <TextBlock Text="Copy" FontSize="10" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                    <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <TextBlock Text="{Binding SelectedServiceDetail.PathName}"
+                                                   FontFamily="Consolas, Cascadia Code" FontSize="11"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   TextWrapping="Wrap"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

@@ -1,0 +1,936 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.IisMonitor.IisMonitorPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+      Title="IIS Manager"
+      Background="{DynamicResource PageBgBrush}"
+      Loaded="Page_Loaded">
+
+    <Page.Resources>
+        <!-- Modern Card Style -->
+        <Style x:Key="IisModernCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <!-- KPI Metric Card Style -->
+        <Style x:Key="KpiCard" TargetType="Border" BasedOn="{StaticResource IisModernCard}">
+            <Setter Property="Padding" Value="18,14,18,0"/>
+            <Setter Property="MinHeight" Value="110"/>
+        </Style>
+
+        <!-- Action Icon Button Style -->
+        <!-- Action Button in Table Rows -->
+        <Style x:Key="IisActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8" Width="32" Height="32">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.25"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Sub-tab Button Style for Inspector -->
+        <Style x:Key="InspectorTabBtn" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="Transparent" BorderThickness="0,0,0,2" x:Name="TabBorder" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="20,16">
+        <Grid.RowDefinitions>
+            <!-- Row 0: Header -->
+            <RowDefinition Height="Auto"/>
+            <!-- Row 1: KPI Cards -->
+            <RowDefinition Height="Auto"/>
+            <!-- Row 2: Status / Admin Alert -->
+            <RowDefinition Height="Auto"/>
+            <!-- Row 3: Main Split Content (Tables + Inspector) -->
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============================================================ -->
+        <!-- ROW 0: HEADER BAR                                            -->
+        <!-- ============================================================ -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Title + Daemon Status Badge + Subtitle -->
+            <StackPanel VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="IIS Manager" Style="{StaticResource HeadingXL}" VerticalAlignment="Center"/>
+                    
+                    <!-- W3SVC Daemon Status Pill -->
+                    <Border Background="#1510B981" BorderBrush="#3010B981" BorderThickness="1"
+                            CornerRadius="12" Padding="10,4" Margin="14,0,0,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsW3SvcRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="#10B981" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="W3SVC Running" FontSize="11" FontWeight="SemiBold" Foreground="#10B981" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#15EF4444" BorderBrush="#30EF4444" BorderThickness="1"
+                            CornerRadius="12" Padding="10,4" Margin="14,0,0,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsW3SvcRunning, Converter={StaticResource BooleanNotToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="#EF4444" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="W3SVC Stopped" FontSize="11" FontWeight="SemiBold" Foreground="#EF4444" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Monitor and manage Internet Information Services in real-time"
+                           Style="{StaticResource Caption}" Margin="0,3,0,0"/>
+            </StackPanel>
+
+            <!-- Right: Action Buttons -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <ProgressBar Style="{StaticResource LoadingSpinner}" Width="60" Margin="0,0,12,0" VerticalAlignment="Center"
+                             Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                <!-- Refresh Button -->
+                <Button Command="{Binding LoadIisInfoCommand}"
+                        Background="{DynamicResource CardBgBrush}"
+                        BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        Padding="14,8" Margin="0,0,10,0" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Refresh" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <!-- Global Restart IIS Button -->
+                <Button Command="{Binding GlobalRestartIisCommand}"
+                        Background="{DynamicResource AccentBrush}"
+                        BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="0"
+                        Foreground="White"
+                        Padding="16,8" Cursor="Hand">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Global Restart IIS" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ============================================================ -->
+        <!-- ROW 1: TOP 4 KPI METRIC CARDS                                -->
+        <!-- ============================================================ -->
+        <Grid Grid.Row="1" Margin="0,0,0,16"
+              Visibility="{Binding IisAvailable, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- CARD 1: Total Websites -->
+            <Border Grid.Column="0" Style="{StaticResource KpiCard}" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="24"/>
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#200EA5E9" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#0EA5E9"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Total Websites" Style="{StaticResource Caption}"/>
+                            <TextBlock Text="{Binding SiteCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="Running: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SiteRunning}" FontSize="12" FontWeight="Bold" Foreground="#10B981" Margin="0,0,14,0"/>
+                        <TextBlock Text="Stopped: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SiteStopped}" FontSize="12" FontWeight="Bold" Foreground="#EF4444"/>
+                    </StackPanel>
+                    <!-- Bottom Decorative Wave -->
+                    <Path Grid.Row="2" Stroke="#0EA5E9" StrokeThickness="2" VerticalAlignment="Bottom"
+                          Data="M0,18 C20,12 40,22 60,10 C80,5 100,16 120,8 C140,4 160,15 180,6 C200,2 220,14 240,4"
+                          Stretch="Fill" Height="18" Opacity="0.8"/>
+                </Grid>
+            </Border>
+
+            <!-- CARD 2: Application Pools -->
+            <Border Grid.Column="1" Style="{StaticResource KpiCard}" Margin="4,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="24"/>
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#2010B981" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#10B981"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Application Pools" Style="{StaticResource Caption}"/>
+                            <TextBlock Text="{Binding PoolCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="Active: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding PoolRunning}" FontSize="12" FontWeight="Bold" Foreground="#10B981" Margin="0,0,14,0"/>
+                        <TextBlock Text="Inactive: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding PoolStopped}" FontSize="12" FontWeight="Bold" Foreground="#EF4444"/>
+                    </StackPanel>
+                    <!-- Bottom Decorative Wave -->
+                    <Path Grid.Row="2" Stroke="#10B981" StrokeThickness="2" VerticalAlignment="Bottom"
+                          Data="M0,16 C25,8 50,20 75,6 C100,18 125,4 150,14 C175,2 200,16 225,5 C250,12 275,3 300,10"
+                          Stretch="Fill" Height="18" Opacity="0.8"/>
+                </Grid>
+            </Border>
+
+            <!-- CARD 3: Worker Processes -->
+            <Border Grid.Column="2" Style="{StaticResource KpiCard}" Margin="4,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="24"/>
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#208B5CF6" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE9D2;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#8B5CF6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Worker Processes" Style="{StaticResource Caption}"/>
+                            <TextBlock Text="{Binding WorkerProcessCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="CPU: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding CpuUsageText}" FontSize="12" FontWeight="Bold" Foreground="#0EA5E9" Margin="0,0,14,0"/>
+                        <TextBlock Text="RAM: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding RamUsageText}" FontSize="12" FontWeight="Bold" Foreground="#0EA5E9"/>
+                    </StackPanel>
+                    <!-- Bottom Decorative Wave -->
+                    <Path Grid.Row="2" Stroke="#8B5CF6" StrokeThickness="2" VerticalAlignment="Bottom"
+                          Data="M0,14 C20,18 40,4 60,16 C80,2 100,12 120,4 C140,16 160,2 180,10 C200,6 220,14 240,4"
+                          Stretch="Fill" Height="18" Opacity="0.8"/>
+                </Grid>
+            </Border>
+
+            <!-- CARD 4: SSL Certificates -->
+            <Border Grid.Column="3" Style="{StaticResource KpiCard}" Margin="8,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="24"/>
+                    </Grid.RowDefinitions>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="38" Height="38" CornerRadius="19" Background="#20F59E0B" VerticalAlignment="Center">
+                            <TextBlock Text="&#xEA18;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#F59E0B"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="SSL Certificates" Style="{StaticResource Caption}"/>
+                            <TextBlock Text="{Binding SslCertCount}" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="Valid: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SslValidCount}" FontSize="12" FontWeight="Bold" Foreground="#10B981" Margin="0,0,10,0"/>
+                        <TextBlock Text="Expiring: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SslExpiringCount}" FontSize="12" FontWeight="Bold" Foreground="#F59E0B" Margin="0,0,10,0"/>
+                        <TextBlock Text="Expired: " Style="{StaticResource Caption}"/>
+                        <TextBlock Text="{Binding SslExpiredCount}" FontSize="12" FontWeight="Bold" Foreground="#EF4444"/>
+                    </StackPanel>
+                    <!-- Bottom Decorative Wave -->
+                    <Path Grid.Row="2" Stroke="#F59E0B" StrokeThickness="2" VerticalAlignment="Bottom"
+                          Data="M0,18 C25,10 50,14 75,4 C100,16 125,6 150,12 C175,2 200,16 225,4 C250,10 275,2 300,12"
+                          Stretch="Fill" Height="18" Opacity="0.8"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============================================================ -->
+        <!-- ROW 2: ADMIN & ERROR BANNERS                                 -->
+        <!-- ============================================================ -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,12">
+            <!-- Administrator Privileges Prompt Card -->
+            <Border Background="{DynamicResource WarningBgBrush}"
+                    Padding="16,12" CornerRadius="8"
+                    BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                    Visibility="{Binding RequiresAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource WarningBrush}" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE7EF;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Administrator Privileges Required" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <TextBlock Text="Windows IIS configuration requires elevated permissions to view and control sites &amp; pools."
+                                   FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Command="{Binding RestartAsAdminCommand}"
+                            Style="{StaticResource BtnPrimary}"
+                            Background="{DynamicResource WarningBrush}"
+                            BorderBrush="{DynamicResource WarningBrush}"
+                            Foreground="White" Padding="14,6" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7EF;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Restart as Administrator" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Error Banner -->
+            <Border Margin="0,6,0,0"
+                    Background="{DynamicResource DangerBgBrush}"
+                    Padding="12" CornerRadius="8"
+                    BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1"
+                    Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="{Binding ErrorMessage}" Style="{StaticResource BodySm}"
+                           Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+
+        <!-- ============================================================ -->
+        <!-- ROW 3: MAIN SPLIT CONTENT (DUAL TABLES + INSPECTOR)          -->
+        <!-- ============================================================ -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <!-- Column 0: Left Main Area (Websites & AppPools) -->
+                <ColumnDefinition Width="*"/>
+                <!-- Column 1: Right Inspector Drawer -->
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Main Dual Card Layout -->
+            <Grid Grid.Column="0" Margin="0,0,12,0">
+                <Grid.RowDefinitions>
+                    <!-- Websites Table Section -->
+                    <RowDefinition Height="*"/>
+                    <!-- Spacer -->
+                    <RowDefinition Height="14"/>
+                    <!-- App Pools Table Section -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- ======================================== -->
+                <!-- SECTION 1: WEBSITES TABLE CARD          -->
+                <!-- ======================================== -->
+                <Border Grid.Row="0" Style="{StaticResource IisModernCard}" Padding="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header with Search & Filter -->
+                        <Border Padding="16,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Title -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Websites" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <Border Margin="8,0,0,0" Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="6,2">
+                                        <TextBlock Text="{Binding SiteCount}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- Search Input Box -->
+                                <Border Grid.Column="2" Background="{DynamicResource SurfaceBgBrush}"
+                                        BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                        CornerRadius="6" Height="32" Padding="8,0" VerticalAlignment="Center">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                   Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBox Grid.Column="1" Text="{Binding SearchWebsitesText, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                                 FontSize="12" VerticalAlignment="Center"
+                                                 md:HintAssist.Hint="Search websites..."
+                                                 md:HintAssist.IsFloating="False"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Filter Button -->
+                                <Button Grid.Column="3" Margin="8,0,0,0"
+                                        Background="{DynamicResource SurfaceBgBrush}"
+                                        BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                        Foreground="{DynamicResource TextSecondaryBrush}"
+                                        Height="32" Padding="10,0" Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Filter" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Websites DataGrid -->
+                        <DataGrid x:Name="SitesGrid" Grid.Row="1"
+                                  ItemsSource="{Binding FilteredSites}"
+                                  SelectedItem="{Binding SelectedSite, Mode=TwoWay}"
+                                  Style="{StaticResource DGrid}"
+                                  RowHeight="42"
+                                  SelectionMode="Single" SelectionUnit="FullRow">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}"/>
+                                <Style TargetType="DataGridCell" BasedOn="{StaticResource DGridCell}"/>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource DGridRow}"/>
+                            </DataGrid.Resources>
+                            <DataGrid.Columns>
+                                <!-- Website Name with Globe Icon -->
+                                <DataGridTemplateColumn Header="Website Name" Width="200" SortMemberPath="Name">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                                <Border Width="26" Height="26" CornerRadius="13" Background="#200EA5E9" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                               Foreground="#0EA5E9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Status Badge -->
+                                <DataGridTemplateColumn Header="Status" Width="120" SortMemberPath="Status">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="10" Padding="10,4" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#2010B981"/>
+                                                        <Setter Property="BorderBrush" Value="#4010B981"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                                                                <Setter Property="Background" Value="#20EF4444"/>
+                                                                <Setter Property="BorderBrush" Value="#40EF4444"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusColor}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{Binding StatusColor}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Bindings / Ports -->
+                                <DataGridTextColumn Header="Bindings / Ports" Binding="{Binding Bindings}" Width="160" SortMemberPath="Bindings"/>
+
+                                <!-- Physical Path -->
+                                <DataGridTextColumn Header="Physical Path" Binding="{Binding PhysicalPath}" Width="*" SortMemberPath="PhysicalPath"/>
+
+                                <!-- Action Buttons -->
+                                <DataGridTemplateColumn Header="Actions" Width="170">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                <!-- Play / Start -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#2010B981"
+                                                        BorderBrush="#5010B981"
+                                                        Command="{Binding DataContext.StartSiteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding IsRunning, Converter={StaticResource BooleanNotConverter}}"
+                                                        ToolTip="Start Website">
+                                                    <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+
+                                                <!-- Stop -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#20EF4444"
+                                                        BorderBrush="#50EF4444"
+                                                        Command="{Binding DataContext.StopSiteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding IsRunning}"
+                                                        ToolTip="Stop Website">
+                                                    <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#EF4444" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+
+                                                <!-- Browse URL -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#200EA5E9"
+                                                        BorderBrush="#500EA5E9"
+                                                        Command="{Binding DataContext.BrowseSiteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Browse Website in Browser">
+                                                    <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#0EA5E9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+
+                                                <!-- Open Folder -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#208B5CF6"
+                                                        BorderBrush="#508B5CF6"
+                                                        Command="{Binding DataContext.OpenSiteFolderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Explore Physical Directory">
+                                                    <TextBlock Text="&#xED25;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#A78BFA" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Footer Pagination & Row Count -->
+                        <Border Grid.Row="2" Padding="16,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+                            <Grid>
+                                <TextBlock Text="{Binding FilteredSites.Count, StringFormat='Showing 1 to {0} websites'}"
+                                           Style="{StaticResource Caption}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- ======================================== -->
+                <!-- SECTION 2: APPLICATION POOLS TABLE CARD -->
+                <!-- ======================================== -->
+                <Border Grid.Row="2" Style="{StaticResource IisModernCard}" Padding="0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header with Search & Filter -->
+                        <Border Padding="16,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="220"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Title -->
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Application Pools" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <Border Margin="8,0,0,0" Background="{DynamicResource AccentBrush}" CornerRadius="4" Padding="6,2">
+                                        <TextBlock Text="{Binding PoolCount}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                    </Border>
+                                </StackPanel>
+
+                                <!-- Search Input Box -->
+                                <Border Grid.Column="2" Background="{DynamicResource SurfaceBgBrush}"
+                                        BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                        CornerRadius="6" Height="32" Padding="8,0" VerticalAlignment="Center">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                   Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBox Grid.Column="1" Text="{Binding SearchPoolsText, UpdateSourceTrigger=PropertyChanged}"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}"
+                                                 FontSize="12" VerticalAlignment="Center"
+                                                 md:HintAssist.Hint="Search pools..."
+                                                 md:HintAssist.IsFloating="False"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Filter Button -->
+                                <Button Grid.Column="3" Margin="8,0,0,0"
+                                        Background="{DynamicResource SurfaceBgBrush}"
+                                        BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                        Foreground="{DynamicResource TextSecondaryBrush}"
+                                        Height="32" Padding="10,0" Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Filter" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- Application Pools DataGrid -->
+                        <DataGrid x:Name="PoolsGrid" Grid.Row="1"
+                                  ItemsSource="{Binding FilteredAppPools}"
+                                  SelectedItem="{Binding SelectedPool, Mode=TwoWay}"
+                                  Style="{StaticResource DGrid}"
+                                  RowHeight="42"
+                                  SelectionMode="Single" SelectionUnit="FullRow">
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}"/>
+                                <Style TargetType="DataGridCell" BasedOn="{StaticResource DGridCell}"/>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource DGridRow}"/>
+                            </DataGrid.Resources>
+                            <DataGrid.Columns>
+                                <!-- Pool Name with Gears Icon -->
+                                <DataGridTemplateColumn Header="Pool Name" Width="200" SortMemberPath="Name">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                                                <Border Width="26" Height="26" CornerRadius="13" Background="#2010B981" Margin="0,0,10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                                               Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- Status Badge -->
+                                <DataGridTemplateColumn Header="Status" Width="120" SortMemberPath="Status">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="10" Padding="10,4" Height="24" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="#2010B981"/>
+                                                        <Setter Property="BorderBrush" Value="#4010B981"/>
+                                                        <Setter Property="BorderThickness" Value="1"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                                                                <Setter Property="Background" Value="#20EF4444"/>
+                                                                <Setter Property="BorderBrush" Value="#40EF4444"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusColor}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{Binding StatusColor}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!-- .NET CLR Version -->
+                                <DataGridTextColumn Header=".NET CLR Version" Binding="{Binding ManagedRuntimeVersion}" Width="130" SortMemberPath="ManagedRuntimeVersion"/>
+
+                                <!-- Pipeline Mode -->
+                                <DataGridTextColumn Header="Pipeline Mode" Binding="{Binding ManagedPipelineMode}" Width="120" SortMemberPath="ManagedPipelineMode"/>
+
+                                <!-- Worker Processes -->
+                                <DataGridTextColumn Header="Worker Processes" Binding="{Binding WorkerProcesses}" Width="*" SortMemberPath="WorkerProcesses"/>
+
+                                <!-- Action Buttons -->
+                                <DataGridTemplateColumn Header="Actions" Width="150">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                                                <!-- Play / Start -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#2010B981"
+                                                        BorderBrush="#5010B981"
+                                                        Command="{Binding DataContext.StartPoolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding IsRunning, Converter={StaticResource BooleanNotConverter}}"
+                                                        ToolTip="Start App Pool">
+                                                    <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+
+                                                <!-- Stop -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#20EF4444"
+                                                        BorderBrush="#50EF4444"
+                                                        Command="{Binding DataContext.StopPoolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        IsEnabled="{Binding IsRunning}"
+                                                        ToolTip="Stop App Pool">
+                                                    <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#EF4444" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+
+                                                <!-- Recycle -->
+                                                <Button Style="{StaticResource IisActionBtn}"
+                                                        Background="#20F59E0B"
+                                                        BorderBrush="#50F59E0B"
+                                                        Command="{Binding DataContext.RecyclePoolCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Recycle App Pool">
+                                                    <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- Footer Pagination & Row Count -->
+                        <Border Grid.Row="2" Padding="16,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+                            <Grid>
+                                <TextBlock Text="{Binding FilteredAppPools.Count, StringFormat='Showing 1 to {0} application pools'}"
+                                           Style="{StaticResource Caption}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ============================================================ -->
+            <!-- RIGHT COLUMN: WEBSITE DETAILS INSPECTOR DRAWER               -->
+            <!-- ============================================================ -->
+            <Border Grid.Column="1" Width="330" Style="{StaticResource IisModernCard}" Padding="18"
+                    Visibility="{Binding IsInspectorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <!-- Inspector Header -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Website Details" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Button Grid.Column="1" Command="{Binding CloseInspectorCommand}"
+                                    Style="{StaticResource BtnActionIcon}" Width="24" Height="24">
+                                <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </Button>
+                        </Grid>
+
+                        <!-- Website Node Identity Card -->
+                        <Grid Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="38" Height="38" CornerRadius="19" Background="#200EA5E9" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="#0EA5E9"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SelectedSite.Name}" FontSize="14" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding SelectedSite.Id, StringFormat='Website ID: {0}'}"
+                                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <Border Grid.Column="2" Background="#1510B981" CornerRadius="10" Padding="8,3" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="#10B981" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SelectedSite.Status}" FontSize="10" FontWeight="Bold" Foreground="#10B981"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- Sub-tabs Navigation -->
+                        <Border BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Margin="0,0,0,14" Padding="0,0,0,6">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="General" Style="{StaticResource InspectorTabBtn}" IsChecked="True"/>
+                                <RadioButton Content="Bindings" Style="{StaticResource InspectorTabBtn}"/>
+                                <RadioButton Content="Limits" Style="{StaticResource InspectorTabBtn}"/>
+                                <RadioButton Content="Modules" Style="{StaticResource InspectorTabBtn}"/>
+                                <RadioButton Content="Logs" Style="{StaticResource InspectorTabBtn}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section: General Properties -->
+                        <StackPanel Margin="0,0,0,14">
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Physical Path" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.PhysicalPath}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" MaxWidth="190" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Physical Directory" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.PhysicalPath}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="{DynamicResource TextPrimaryBrush}" MaxWidth="190" TextTrimming="CharacterEllipsis"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Application Pool" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.ApplicationPool}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="#0EA5E9" FontWeight="SemiBold"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Status" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.Status}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="#10B981" FontWeight="Bold"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Start Mode" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.StartMode}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Created" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.CreatedDate}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Last Started" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.LastStartedDate}" HorizontalAlignment="Right" FontSize="11"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Section: Bindings -->
+                        <TextBlock Text="Bindings" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,6,0,8"/>
+                        <Border Background="{DynamicResource SurfaceBgBrush}" CornerRadius="6" Padding="10,8" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Grid Margin="0,2">
+                                    <TextBlock Text="http" FontSize="11" FontWeight="Bold" Foreground="#0EA5E9"/>
+                                    <TextBlock Text="{Binding SelectedSite.Bindings}" HorizontalAlignment="Right" FontSize="11"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section: SSL Certificate -->
+                        <TextBlock Text="SSL Certificate" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                        <Border Background="{DynamicResource SurfaceBgBrush}" CornerRadius="6" Padding="12" Margin="0,0,0,14">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="24" Height="24" CornerRadius="12" Background="#2010B981">
+                                        <TextBlock Text="&#xEA18;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="#10B981"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Grid.Column="1" Text="{Binding SelectedSite.SslCertDomain}" FontSize="12" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <TextBlock Text="Issued To" Style="{StaticResource Caption}"/>
+                                    <TextBlock Text="{Binding SelectedSite.SslCertDomain}" HorizontalAlignment="Right" FontSize="10"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160"/>
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <TextBlock Text="Issued By" Style="{StaticResource Caption}"/>
+                                    <TextBlock Text="{Binding SelectedSite.SslCertIssuedBy}" HorizontalAlignment="Right" FontSize="10"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <TextBlock Text="Valid To" Style="{StaticResource Caption}"/>
+                                    <TextBlock Text="{Binding SelectedSite.SslCertValidTo}" HorizontalAlignment="Right" FontSize="10"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                </Grid>
+                                <Grid Margin="0,2">
+                                    <TextBlock Text="Status" Style="{StaticResource Caption}"/>
+                                    <TextBlock Text="Valid" HorizontalAlignment="Right" FontSize="10" FontWeight="Bold" Foreground="#10B981"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Section: Live Usage -->
+                        <TextBlock Text="Live Usage" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                        <StackPanel Margin="0,0,0,6">
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock Text="Memory Usage" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="{Binding SelectedSite.MemoryUsageText}" HorizontalAlignment="Right" FontSize="11"
+                                           FontWeight="Bold" Foreground="#0EA5E9"/>
+                            </Grid>
+                            <ProgressBar Value="25" Maximum="100" Height="5" Background="{DynamicResource SurfaceBgBrush}"
+                                         Foreground="#0EA5E9" BorderThickness="0" Margin="0,0,0,4"/>
+                            <TextBlock Text="Max: 512 MB" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
+
+                            <Grid Margin="0,10,0,4">
+                                <TextBlock Text="Requests / sec" Style="{StaticResource Caption}"/>
+                                <TextBlock Text="152 req/s" HorizontalAlignment="Right" FontSize="11"
+                                           FontWeight="Bold" Foreground="#10B981"/>
+                            </Grid>
+                            <!-- Mini Wave -->
+                            <Path Stroke="#10B981" StrokeThickness="1.5"
+                                  Data="M0,12 C10,6 20,16 30,4 C40,14 50,2 60,10 C70,4 80,12 90,2 C100,8 110,3 120,6"
+                                  Stretch="Fill" Height="14" Opacity="0.8"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>

@@ -1,0 +1,699 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.Scan.ScanPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+      Title="Network Scanner"
+      Background="{DynamicResource PageBgBrush}"
+      SnapsToDevicePixels="True"
+      UseLayoutRounding="True"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      RenderOptions.ClearTypeHint="Enabled">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,24,12,28">
+        <ScrollViewer.Resources>
+            <Style TargetType="ScrollBar">
+                <Setter Property="MinWidth" Value="14"/>
+            </Style>
+        </ScrollViewer.Resources>
+        <StackPanel MaxWidth="1440" HorizontalAlignment="Stretch">
+
+            <!-- ======================================================== -->
+            <!-- SECTION 1: SCAN CONFIGURATION CARD                       -->
+            <!-- ======================================================== -->
+            <Border Style="{StaticResource NetScopeCard}" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Title -->
+                    <TextBlock Grid.Row="0" Text="Scan Configuration" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,14"/>
+
+                    <!-- Form Controls Row -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <!-- IP Range -->
+                            <ColumnDefinition Width="Auto"/>
+                            <!-- Scan Preset Dropdown -->
+                            <ColumnDefinition Width="220"/>
+                            <!-- Spacing -->
+                            <ColumnDefinition Width="*"/>
+                            <!-- Action Buttons -->
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 1. IP Range Input -->
+                        <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                            <TextBlock Text="IP Range" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Start IP -->
+                                <Border Width="120" Height="36" CornerRadius="8" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1">
+                                    <TextBox Text="{Binding StartIP, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}"
+                                             FontSize="12" FontWeight="SemiBold" VerticalContentAlignment="Center" Padding="8,0"
+                                             IsEnabled="{Binding IsScanning, Converter={StaticResource BooleanNotConverter}}"/>
+                                </Border>
+
+                                <!-- Dash Separator -->
+                                <TextBlock Text="-" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="8,0"/>
+
+                                <!-- End IP -->
+                                <Border Width="120" Height="36" CornerRadius="8" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1">
+                                    <TextBox Text="{Binding EndIP, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}"
+                                             FontSize="12" FontWeight="SemiBold" VerticalContentAlignment="Center" Padding="8,0"
+                                             IsEnabled="{Binding IsScanning, Converter={StaticResource BooleanNotConverter}}"/>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 2. Scan Preset Dropdown -->
+                        <StackPanel Grid.Column="1" Margin="0,0,16,0">
+                            <TextBlock Text="Scan Preset" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                            <ComboBox Style="{StaticResource ModernDarkComboBox}"
+                                      ItemsSource="{Binding ScanPresets}"
+                                      SelectedItem="{Binding SelectedPreset}"
+                                      Height="36" MinHeight="36"
+                                      IsEnabled="{Binding IsScanning, Converter={StaticResource BooleanNotConverter}}"/>
+                        </StackPanel>
+
+                        <!-- 3. Action Buttons (Scan Network, Stop, Export CSV) -->
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <!-- Scan Network Primary Button -->
+                            <Button Command="{Binding StartScanCommand}"
+                                    Height="38" Padding="18,0" Margin="0,0,10,0"
+                                    Background="#0284C7" BorderBrush="#38BDF8" BorderThickness="1"
+                                    Foreground="White" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                    IsEnabled="{Binding IsScanning, Converter={StaticResource BooleanNotConverter}}">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </Button.Resources>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE704;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Scan Network" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Stop Button -->
+                            <Button Command="{Binding StopScanCommand}"
+                                    Height="38" Padding="14,0" Margin="0,0,10,0"
+                                    Background="{DynamicResource CardBgAltBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                    Foreground="{DynamicResource CardBgAltBrush}" FontSize="12" FontWeight="SemiBold" Cursor="Hand"
+                                    IsEnabled="{Binding IsScanning}">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </Button.Resources>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource DangerBrush}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Stop" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Export CSV Button -->
+                            <Button Command="{Binding ExportCsvCommand}"
+                                    Height="38" Padding="14,0"
+                                    Background="{DynamicResource CardBgAltBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                    Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" FontWeight="SemiBold" Cursor="Hand">
+                                <Button.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="8"/>
+                                    </Style>
+                                </Button.Resources>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xEDE1;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Export CSV" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Scan Progress Bar (when scanning) -->
+            <Border Style="{StaticResource NetScopeCard}" Margin="0,0,0,16" Padding="16,12"
+                    Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Progress, StringFormat={}{0}%}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                    </Grid>
+                    <ProgressBar Grid.Row="1" Value="{Binding Progress}" Minimum="0" Maximum="100" Height="6"
+                                 Background="#15FFFFFF" Foreground="{DynamicResource AccentBrush}" BorderThickness="0"/>
+                </Grid>
+            </Border>
+
+            <!-- ======================================================== -->
+            <!-- SECTION 2: 5 KPI METRIC CARDS ROW                        -->
+            <!-- ======================================================== -->
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- CARD 1: ONLINE (Green) -->
+                <Border Grid.Column="0" Style="{StaticResource MetricCardGreen}" Margin="0,0,8,0" Cursor="Hand" ToolTip="Click to filter by Online devices">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding FilterByCardCommand}" CommandParameter="Online"/>
+                    </Border.InputBindings>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="8" Background="#1510B981" BorderBrush="#4010B981" BorderThickness="1">
+                                <TextBlock Text="&#xE95B;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Online" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding OnlineCount}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Bottom"/>
+                            <TextBlock Grid.Column="1" Text="{Binding OnlinePercentText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- CARD 2: OFFLINE (Red) -->
+                <Border Grid.Column="1" Style="{StaticResource MetricCardRose}" Margin="0,0,8,0" Cursor="Hand" ToolTip="Click to filter by Offline devices">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding FilterByCardCommand}" CommandParameter="Offline"/>
+                    </Border.InputBindings>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="8" Background="#15F43F5E" BorderBrush="#40F43F5E" BorderThickness="1">
+                                <TextBlock Text="&#xE95B;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#F43F5E" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Offline" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding OfflineCount}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Bottom"/>
+                            <TextBlock Grid.Column="1" Text="{Binding OfflinePercentText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- CARD 3: SERVERS (Blue) -->
+                <Border Grid.Column="2" Style="{StaticResource MetricCardBlue}" Margin="0,0,8,0" Cursor="Hand" ToolTip="Click to filter by Servers">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding FilterByCardCommand}" CommandParameter="Servers"/>
+                    </Border.InputBindings>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="8" Background="#150EA5E9" BorderBrush="#400EA5E9" BorderThickness="1">
+                                <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#0EA5E9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Servers" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding ServerCount}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Bottom"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ServerPercentText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- CARD 4: SWITCHES (Purple) -->
+                <Border Grid.Column="3" Style="{StaticResource MetricCardPurple}" Margin="0,0,8,0" Cursor="Hand" ToolTip="Click to filter by Switches &amp; Routers">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding FilterByCardCommand}" CommandParameter="Switches &amp; Routers"/>
+                    </Border.InputBindings>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="8" Background="#15A855F7" BorderBrush="#40A855F7" BorderThickness="1">
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#A855F7" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Switches" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding SwitchCount}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Bottom"/>
+                            <TextBlock Grid.Column="1" Text="{Binding SwitchPercentText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- CARD 5: PRINTERS (Amber) -->
+                <Border Grid.Column="4" Style="{StaticResource MetricCardAmber}" Cursor="Hand" ToolTip="Click to filter by Printers">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding FilterByCardCommand}" CommandParameter="Printers"/>
+                    </Border.InputBindings>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="34" Height="34" CornerRadius="8" Background="#15F59E0B" BorderBrush="#40F59E0B" BorderThickness="1">
+                                <TextBlock Text="&#xE749;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#F59E0B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="Printers" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding PrinterCount}" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Bottom"/>
+                            <TextBlock Grid.Column="1" Text="{Binding PrinterPercentText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ======================================================== -->
+            <!-- SECTION 3: DISCOVERED DEVICES TABLE                      -->
+            <!-- ======================================================== -->
+            <Border Style="{StaticResource NetScopeCard}"
+                    Visibility="{Binding HasResults, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Table Header & Toolbar -->
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Title -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Discovered Devices" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text=" (" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <TextBlock Text="{Binding DiscoveredDevices.Count}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                            <TextBlock Text=")" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}"/>
+                        </StackPanel>
+
+                        <!-- Toolbar Actions -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <!-- Search box in table -->
+                            <Border Width="220" Height="34" CornerRadius="8" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" Margin="0,0,10,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="30"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding SearchFilterText, UpdateSourceTrigger=PropertyChanged}"
+                                             Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" VerticalContentAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" IsHitTestVisible="False" Text="Search devices..." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SearchFilterText}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding SearchFilterText}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Filter Dropdown -->
+                            <ComboBox ItemsSource="{Binding FilterModes}"
+                                      SelectedItem="{Binding SelectedFilterMode}"
+                                      Width="160" Height="34" Margin="0,0,8,0"
+                                      Style="{StaticResource NetScopeCombo}"
+                                      ToolTip="Filter Discovered Devices"/>
+
+                            <!-- Refresh Button -->
+                            <Button Style="{StaticResource BtnActionIcon}" Command="{Binding LoadInitialDataCommand}" ToolTip="Load Previous Scan">
+                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Table Column Headers -->
+                    <Border Grid.Row="1" Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="16,8" Margin="0,0,0,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="130"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Status -->
+                            <Button Grid.Column="0" Command="{Binding SortByColumnCommand}" CommandParameter="Status"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by Status">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- IP Address -->
+                            <Button Grid.Column="1" Command="{Binding SortByColumnCommand}" CommandParameter="IPAddress"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by IP Address">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="IP Address" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- MAC Address -->
+                            <Button Grid.Column="2" Command="{Binding SortByColumnCommand}" CommandParameter="MACAddress"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by MAC Address">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="MAC Address" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Hostname -->
+                            <Button Grid.Column="3" Command="{Binding SortByColumnCommand}" CommandParameter="Hostname"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by Hostname">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Hostname" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Vendor (Group similar vendors) -->
+                            <Button Grid.Column="4" Command="{Binding SortByColumnCommand}" CommandParameter="Vendor"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort &amp; group by Vendor">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Vendor" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Latency -->
+                            <Button Grid.Column="5" Command="{Binding SortByColumnCommand}" CommandParameter="Latency"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by Latency">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Latency" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Open Ports -->
+                            <Button Grid.Column="6" Command="{Binding SortByColumnCommand}" CommandParameter="Ports"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by Open Ports count">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Open Ports" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Services -->
+                            <Button Grid.Column="7" Command="{Binding SortByColumnCommand}" CommandParameter="Services"
+                                    Background="Transparent" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Padding="0" Margin="0"
+                                    ToolTip="Click to sort by Services">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Services" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Text=" ⇅" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.7" Margin="3,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Actions -->
+                            <TextBlock Grid.Column="8" Text="Actions" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Table Rows -->
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding DiscoveredDevices}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="Transparent" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="16,11">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource HoverBgBrush}"/>
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="130"/>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="160"/>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="90"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="130"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 1. Status Pill -->
+                                        <Border Grid.Column="0" CornerRadius="12" Padding="8,3" HorizontalAlignment="Left">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource SuccessBgBrush}"/>
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                            <Setter Property="Background" Value="{DynamicResource DangerBgBrush}"/>
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="6" Height="6" Margin="0,0,6,0">
+                                                    <Ellipse.Style>
+                                                        <Style TargetType="Ellipse">
+                                                            <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                                    <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Ellipse.Style>
+                                                </Ellipse>
+                                                <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- 2. IP Address -->
+                                        <TextBlock Grid.Column="1" Text="{Binding IPAddress}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+
+                                        <!-- 3. MAC Address -->
+                                        <TextBlock Grid.Column="2" Text="{Binding MACAddress}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+
+                                        <!-- 4. Hostname -->
+                                        <TextBlock Grid.Column="3" Text="{Binding Hostname}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- 5. Vendor (with circular brand badge) -->
+                                        <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="22" Height="22" CornerRadius="11" Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding VendorInitial}" FontSize="9" FontWeight="Bold" Foreground="#0EA5E9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding Vendor}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+
+                                        <!-- 6. Latency Badge -->
+                                        <Border Grid.Column="5" Background="#1510B981" BorderBrush="#3510B981" BorderThickness="1" CornerRadius="6" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                            <Setter Property="Background" Value="Transparent"/>
+                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding LatencyText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Offline">
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <!-- 7. Open Ports Badge -->
+                                        <Border Grid.Column="6" Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" CornerRadius="6" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding OpenPortsCount}" Value="0">
+                                                            <Setter Property="Background" Value="Transparent"/>
+                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding OpenPortsCount}" FontSize="11" FontWeight="Bold" Foreground="#0EA5E9">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding OpenPortsCount}" Value="0">
+                                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <!-- 8. Services List -->
+                                        <TextBlock Grid.Column="7" Text="{Binding ServicesText}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                        <!-- 9. Action Buttons (Ping, SSH, More Details) -->
+                                        <StackPanel Grid.Column="8" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                            <!-- Quick Ping -->
+                                            <Button Style="{StaticResource BtnActionIcon}" Width="Auto" Padding="8,0" Margin="0,0,4,0" ToolTip="Quick Ping"
+                                                    Command="{Binding DataContext.QuickPingCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="Ping" FontSize="10" FontWeight="SemiBold"/>
+                                            </Button>
+
+                                            <!-- Quick SSH -->
+                                            <Button Style="{StaticResource BtnActionIcon}" Width="Auto" Padding="8,0" Margin="0,0,4,0" ToolTip="SSH Terminal"
+                                                    Command="{Binding DataContext.QuickSshCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="SSH" FontSize="10" FontWeight="SemiBold"/>
+                                            </Button>
+
+                                            <!-- View Full Details (...) -->
+                                            <Button Style="{StaticResource BtnActionIcon}" ToolTip="View Full Device Details"
+                                                    Command="{Binding DataContext.ShowDeviceDetailsCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="&#xE712;" FontFamily="Segoe MDL2 Assets" FontSize="11"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Table Footer Status Bar -->
+                    <Border Grid.Row="3" Margin="0,12,0,0" Padding="14,10" Background="#070E1A" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0"/>
+                                <TextBlock Text="Discovery Complete" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,12,0"/>
+                                <TextBlock Text="•" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,12,0"/>
+                                <TextBlock Text="Displaying " FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                <TextBlock Text="{Binding DiscoveredDevices.Count}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text=" active network host(s)" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Tip: Click '...' on any device to view deep diagnostics &amp; port details" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Bottom Spacer to ensure cards are never clipped -->
+            <Border Height="36" Background="Transparent"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</Page>

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="NetworkDiscoveryTool.Core/NetworkDiscoveryTool.Core.csproj" />
+  <Project Path="NetworkDiscoveryTool.Data/NetworkDiscoveryTool.Data.csproj" />
+  <Project Path="NetworkDiscoveryTool.Helpers/NetworkDiscoveryTool.Helpers.csproj" />
+  <Project Path="NetworkDiscoveryTool.Services/NetworkDiscoveryTool.Services.csproj" />
+  <Project Path="NetworkDiscoveryTool.UI/NetworkDiscoveryTool.UI.csproj" />
+</Solution>

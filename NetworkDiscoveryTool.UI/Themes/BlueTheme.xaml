@@ -1,0 +1,104 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================ -->
+    <!-- BLUE THEME — Full Color Palette                              -->
+    <!-- ============================================================ -->
+
+    <!-- Page & Surface -->
+    <SolidColorBrush x:Key="PageBgBrush" Color="#0B192C"/>
+    <SolidColorBrush x:Key="SurfaceBgBrush" Color="#1E3E62"/>
+    <SolidColorBrush x:Key="SurfaceBorderBrush" Color="#2A5280"/>
+
+    <!-- Cards -->
+    <SolidColorBrush x:Key="CardBgBrush" Color="#1E3E62"/>
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#2A5280"/>
+    <SolidColorBrush x:Key="CardBgAltBrush" Color="#152C47"/>
+    <SolidColorBrush x:Key="CardHoverBorderBrush" Color="#00A8FF"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F8FF"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8D8F8"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#7CA8D8"/>
+    <SolidColorBrush x:Key="TextLabelBrush" Color="#E0F0FF"/>
+    <SolidColorBrush x:Key="TextDisabledBrush" Color="#4A6B8F"/>
+
+    <!-- Inputs -->
+    <SolidColorBrush x:Key="InputBgBrush" Color="#13273F"/>
+    <SolidColorBrush x:Key="InputBorderBrush" Color="#2A5280"/>
+    <SolidColorBrush x:Key="InputFocusBorderBrush" Color="#00A8FF"/>
+
+    <!-- Sidebar -->
+    <SolidColorBrush x:Key="SidebarBgBrush" Color="#071221"/>
+    <SolidColorBrush x:Key="SidebarBtnBrush" Color="Transparent"/>
+    <SolidColorBrush x:Key="SidebarTextBrush" Color="#B8D8F8"/>
+    <SolidColorBrush x:Key="SidebarTextActiveBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SidebarDividerBrush" Color="#1A385C"/>
+    <SolidColorBrush x:Key="NavActiveBgBrush" Color="#2500A8FF"/>
+    <SolidColorBrush x:Key="NavActiveBorderBrush" Color="#00A8FF"/>
+
+    <!-- Accent / Primary -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#00A8FF"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#33BFFF"/>
+    <SolidColorBrush x:Key="AccentMutedBrush" Color="#2000A8FF"/>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="#00A8FF"/>
+    <SolidColorBrush x:Key="PrimaryLightBrush" Color="#1A385C"/>
+
+    <!-- Semantic Status Colors -->
+    <SolidColorBrush x:Key="SuccessBrush" Color="#10B981"/>
+    <SolidColorBrush x:Key="SuccessBgBrush" Color="#1810B981"/>
+    <SolidColorBrush x:Key="SuccessBorderBrush" Color="#3510B981"/>
+
+    <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
+    <SolidColorBrush x:Key="DangerBgBrush" Color="#18EF4444"/>
+    <SolidColorBrush x:Key="DangerBorderBrush" Color="#35EF4444"/>
+
+    <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="WarningBgBrush" Color="#18F59E0B"/>
+    <SolidColorBrush x:Key="WarningBorderBrush" Color="#35F59E0B"/>
+
+    <SolidColorBrush x:Key="PurpleBrush" Color="#A855F7"/>
+    <SolidColorBrush x:Key="PurpleBgBrush" Color="#18A855F7"/>
+    <SolidColorBrush x:Key="PurpleBorderBrush" Color="#35A855F7"/>
+
+    <SolidColorBrush x:Key="InfoBrush" Color="#00A8FF"/>
+    <SolidColorBrush x:Key="InfoBgBrush" Color="#1800A8FF"/>
+
+    <!-- Drawer / Slide-out Panel -->
+    <SolidColorBrush x:Key="DrawerBgBrush" Color="#E60B192C"/>
+    <SolidColorBrush x:Key="DrawerCardBgBrush" Color="#1E3E62"/>
+    <SolidColorBrush x:Key="DrawerBorderBrush" Color="#2A5280"/>
+
+    <!-- Interactive States -->
+    <SolidColorBrush x:Key="HoverBgBrush" Color="#1E3E62"/>
+    <SolidColorBrush x:Key="SelectedBgBrush" Color="#2A5280"/>
+    <SolidColorBrush x:Key="SelectedTextBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="OverlayBgBrush" Color="#CC0B192C"/>
+    <SolidColorBrush x:Key="FocusBorderBrush" Color="#00A8FF"/>
+
+    <!-- Chart Colors -->
+    <SolidColorBrush x:Key="ChartColor1" Color="#00A8FF"/>
+    <SolidColorBrush x:Key="ChartColor2" Color="#10B981"/>
+    <SolidColorBrush x:Key="ChartColor3" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="ChartColor4" Color="#EF4444"/>
+    <SolidColorBrush x:Key="ChartColor5" Color="#A855F7"/>
+    <SolidColorBrush x:Key="ChartColor6" Color="#00D2D3"/>
+
+    <!-- Semantic variant backgrounds (8-25% opacity) -->
+    <SolidColorBrush x:Key="DangerTransparentBrush" Color="#40EF4444"/>
+    <SolidColorBrush x:Key="WarningProgressBgBrush" Color="#20F59E0B"/>
+    <SolidColorBrush x:Key="DangerProgressBgBrush" Color="#20EF4444"/>
+    <SolidColorBrush x:Key="AccentProgressBgBrush" Color="#2000A8FF"/>
+    <SolidColorBrush x:Key="ChartColor5ProgressBgBrush" Color="#20A855F7"/>
+    <SolidColorBrush x:Key="ChartColor6ProgressBgBrush" Color="#2000D2D3"/>
+
+    <!-- White transparent brushes for overlays -->
+    <SolidColorBrush x:Key="White20Brush" Color="#20FFFFFF"/>
+    <SolidColorBrush x:Key="White30Brush" Color="#40FFFFFF"/>
+    <SolidColorBrush x:Key="White10Brush" Color="#1AFFFFFF"/>
+
+    <!-- ScrollBar Brushes -->
+    <SolidColorBrush x:Key="ScrollBarThumbBrush" Color="#334155"/>
+    <SolidColorBrush x:Key="ScrollBarThumbHoverBrush" Color="#00A8FF"/>
+
+</ResourceDictionary>
