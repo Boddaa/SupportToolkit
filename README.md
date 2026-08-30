@@ -13,6 +13,7 @@
 ## 🚀 Key Highlights & Capabilities
 
 ### 🔍 1. High-Speed Multi-Range Network Scanner
+
 - **Concurrent Asynchronous Sweep**: Scans single subnets or multiple CIDR/IP ranges simultaneously using async sockets and ARP cache resolution.
 - **Smart Device Auto-Classifier**: Automatically classifies discovered nodes into **Routers, Switches, Servers, Workstations, IP Cameras, Printers, and Access Controllers** based on MAC OUI vendor tables, NetBIOS names, mDNS, open ports, and HTTP service banners.
 - **Instant Port & Service Fingerprinting**: Analyzes active TCP ports (HTTP, HTTPS, SSH, RDP, RTSP, SQL, SMB, SNMP, etc.) with latency profiling.
@@ -21,6 +22,7 @@
 ---
 
 ### 🗺️ 2. Live Interactive Network Topology Map
+
 - **Hierarchical Switch-Endpoint Tree**: Real-time rendering of core routers, distribution switches, and categorized device clusters.
 - **Hardware-Aware Layout**: Physical scanned switches appear as top-tier distribution nodes directly beneath the core gateway with connected endpoint nodes.
 - **Deep Inspection Side-Drawer**: Click on any node to view real-time MAC address, vendor, open ports, service banners, uptime, and latency.
@@ -32,19 +34,20 @@
 ---
 
 ### 🛠️ 3. Integrated IT Operations Diagnostic Suite
-| Tool | Description |
-| :--- | :--- |
-| **🗄️ SQL Server Connection Tester** | Test connection strings, execute diagnostic SQL queries, evaluate latency, and view tabular query results with error diagnostics. |
-| **⚙️ Windows Services Controller** | Enumerate local and remote Windows services, monitor runtime status, and perform Start / Stop / Restart actions with elevated privileges. |
-| **🌐 IIS Web Server Monitor** | Inspect local IIS websites and Application Pools, view runtime states, and manage pool lifecycle operations. |
-| **📶 Ping Diagnostic & Latency Graph** | Continuous ICMP ping with round-trip latency graphing, packet loss monitoring, and historical stats. |
-| **🔌 Port Checker & Banner Grabbing** | Audit common and custom TCP ports with immediate response code and banner acquisition. |
-| **📑 Log Collector & Event Auditor** | Collect, filter, and inspect Windows Event Logs, application logs, and system crash diagnostics. |
-| **📸 Screen Capture Tool** | Integrated screenshot utility for documenting network anomalies and error dialogs. |
+
+| Tool                                   | Description                                                                                                                               |
+| :------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
+| **🗄️ SQL Server Connection Tester**    | Test connection strings, execute diagnostic SQL queries, evaluate latency, and view tabular query results with error diagnostics.         |
+| **⚙️ Windows Services Controller**     | Enumerate local and remote Windows services, monitor runtime status, and perform Start / Stop / Restart actions with elevated privileges. |
+| **🌐 IIS Web Server Monitor**          | Inspect local IIS websites and Application Pools, view runtime states, and manage pool lifecycle operations.                              |
+| **📶 Ping Diagnostic & Latency Graph** | Continuous ICMP ping with round-trip latency graphing, packet loss monitoring, and historical stats.                                      |
+| **🔌 Port Checker & Banner Grabbing**  | Audit common and custom TCP ports with immediate response code and banner acquisition.                                                    |
+| **📑 Log Collector & Event Auditor**   | Collect, filter, and inspect Windows Event Logs, application logs, and system crash diagnostics.                                          |
 
 ---
 
 ### 🎨 4. Modern Fluent UI & Theme Engine
+
 - **Dark, Light & Deep Blue Themes**: Instant dynamic theme switching using XAML Resource Dictionaries and Fluent design aesthetics.
 - **Glassmorphism & Responsive Layout**: Clean card elevations, smooth vector typography (Segoe MDL2 Assets), and intuitive navigation.
 - **Secure Authentication & RBAC**: Local user management with encrypted passwords and role-based session controls (Admin / Operator).
@@ -74,20 +77,18 @@ NetworkDiscoveryTool/
 ## ⚡ Quick Start & Installation
 
 ### Option A: Portable Standalone Executable (Recommended)
+
 1. Download `SupportToolKit_v2.5_Portable.zip` from the latest [Releases](../../releases) tab.
 2. Extract the `.zip` archive to any directory.
 3. Run `SupportToolKit.exe` (No .NET Runtime installation required).
-4. *(Optional)* Run `Install_SupportToolKit.bat` to create a Desktop and Start Menu shortcut.
+4. _(Optional)_ Run `Install_SupportToolKit.bat` to create a Desktop and Start Menu shortcut.
 
 ---
 
-- **If You Want The Username And Password Chat With me**
-- **My Whatsapp: +201022938245**
-
----
 ## 💻 Building from Source
 
 ### Prerequisites
+
 - [Windows 10/11 (x64)](https://www.microsoft.com/)
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or Visual Studio 2025+ with WPF workload.
 
