@@ -165,13 +165,8 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (all.TryGetValue("NotifyScanError", out var nse)) NotifyOnScanError = nse == "True";
             if (all.TryGetValue("NotifyServiceChange", out var nsv)) NotifyOnServiceChange = nsv == "True";
             if (all.TryGetValue("NotifyNewUser", out var nnu)) NotifyOnNewUserRegistration = nnu == "True";
-            TelegramBotToken = all.TryGetValue("TelegramBotToken", out var tbt) && !string.IsNullOrWhiteSpace(tbt) 
-                ? tbt 
-                : NetworkDiscoveryTool.Services.Services.TelegramNotificationService.DefaultBotToken;
-
-            TelegramAdminChatId = all.TryGetValue("TelegramAdminChatId", out var tcid) && !string.IsNullOrWhiteSpace(tcid) 
-                ? tcid 
-                : NetworkDiscoveryTool.Services.Services.TelegramNotificationService.DefaultAdminChatId;
+            TelegramBotToken = all.TryGetValue("TelegramBotToken", out var tbt) ? tbt : string.Empty;
+            TelegramAdminChatId = all.TryGetValue("TelegramAdminChatId", out var tcid) ? tcid : string.Empty;
 
             _telegramService.BotToken = TelegramBotToken;
             _telegramService.AdminChatId = TelegramAdminChatId;
@@ -338,11 +333,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     public void LoadAllUsers()
     {
         AllUsers.Clear();
-        AllUsers.Add(new AuthService.PendingUser(0, "admin", "Administrator (Master)", "SYSTEM", "admin@local", DateTime.MinValue));
         foreach (var u in _auth.GetAllUsers())
         {
-            if (!string.Equals(u.Username, "admin", StringComparison.OrdinalIgnoreCase))
-                AllUsers.Add(u);
+            AllUsers.Add(u);
         }
     }
 

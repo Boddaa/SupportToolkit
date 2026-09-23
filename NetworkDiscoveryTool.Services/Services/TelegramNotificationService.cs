@@ -18,14 +18,11 @@ public sealed class TelegramNotificationService
     private static readonly HttpClient HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
     // =========================================================================
-    // DEFAULT TELEGRAM BOT INTEGRATION CONFIGURATION
-    // You can update these default credentials here at any time before publishing
+    // TELEGRAM BOT INTEGRATION CONFIGURATION
+    // Configured via Settings by system administrator
     // =========================================================================
-    public const string DefaultBotToken = "8914418594:AAGMMqY91qu0MnkEM453gjclAm_RyOyGxfc";
-    public const string DefaultAdminChatId = "1119565273";
-
-    public string BotToken { get; set; } = DefaultBotToken;
-    public string AdminChatId { get; set; } = DefaultAdminChatId;
+    public string BotToken { get; set; } = string.Empty;
+    public string AdminChatId { get; set; } = string.Empty;
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(BotToken) && !string.IsNullOrWhiteSpace(AdminChatId);
 

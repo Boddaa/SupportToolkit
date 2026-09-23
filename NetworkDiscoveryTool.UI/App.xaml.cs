@@ -150,6 +150,9 @@ public partial class App : System.Windows.Application
             catch { }
 
             Log.Information("Database ready at: {Path}", DatabasePath);
+
+            var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
+            authService.EnsureDefaultAdminExists();
         }
         catch (Exception ex)
         {
@@ -173,8 +176,8 @@ public partial class App : System.Windows.Application
             var dbToken = settingsService.GetAsync("TelegramBotToken").GetAwaiter().GetResult();
             var dbChatId = settingsService.GetAsync("TelegramAdminChatId").GetAwaiter().GetResult();
 
-            telegramService.BotToken = !string.IsNullOrWhiteSpace(dbToken) ? dbToken : NetworkDiscoveryTool.Services.Services.TelegramNotificationService.DefaultBotToken;
-            telegramService.AdminChatId = !string.IsNullOrWhiteSpace(dbChatId) ? dbChatId : NetworkDiscoveryTool.Services.Services.TelegramNotificationService.DefaultAdminChatId;
+            telegramService.BotToken = dbToken ?? string.Empty;
+            telegramService.AdminChatId = dbChatId ?? string.Empty;
         }
         catch
         {

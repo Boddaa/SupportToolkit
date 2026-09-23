@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NetworkDiscoveryTool.Core.Models;
@@ -29,6 +27,35 @@ public sealed class AuthService
 
     public sealed record AppUser(int Id, string Username, string Role);
 
+    public void EnsureDefaultAdminExists()
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            bool hasAdmin = context.Users.Any(u => u.Role == "Administrator");
+            if (!hasAdmin)
+            {
+                var defaultAdmin = new User
+                {
+                    Username = "admin",
+                    PasswordHash = PasswordHasher.HashPassword("159357"),
+                    Email = "admin@local",
+                    HardwareId = HardwareIdService.GetHardwareId(),
+                    Role = "Administrator",
+                    IsApproved = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                context.Users.Add(defaultAdmin);
+                context.SaveChanges();
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to initialize default admin account.");
+        }
+    }
+
     public bool ValidateUser(string username, string password, out AppUser? user, out string? error)
     {
         user = null;
@@ -40,29 +67,37 @@ public sealed class AuthService
             return false;
         }
 
-        // Admin hardcoded login
-        if (username == "admin" && password == "159357")
-        {
-            user = new AppUser(0, "admin", "Administrator");
-            return true;
-        }
-
-        var hash = HashPassword(password);
-
         try
         {
             using var context = _contextFactory.CreateDbContext();
-            var dbUser = context.Users.FirstOrDefault(u => u.Username == username && u.PasswordHash == hash);
+            var dbUser = context.Users.FirstOrDefault(u => u.Username == username.Trim());
             if (dbUser is not null)
             {
+                if (!PasswordHasher.VerifyPassword(password, dbUser.PasswordHash, out bool needsRehash))
+                {
+                    error = "Invalid username or password";
+                    return false;
+                }
+
+                // Automatic security upgrade: migrate legacy unsalted SHA-256 to salted PBKDF2
+                if (needsRehash)
+                {
+                    try
+                    {
+                        dbUser.PasswordHash = PasswordHasher.HashPassword(password);
+                        context.SaveChanges();
+                    }
+                    catch { /* Continue login even if hash upgrade fails */ }
+                }
+
                 if (!dbUser.IsApproved)
                 {
                     error = "Account pending admin approval.";
                     return false;
                 }
 
-                // Cache approved license locally for offline resilience
-                _licenseService.SaveApprovedLicense(dbUser.Username);
+                // Cache approved license locally for offline resilience with password hash
+                _licenseService.SaveApprovedLicense(dbUser.Username, dbUser.PasswordHash);
 
                 user = new AppUser(dbUser.Id, dbUser.Username, dbUser.Role);
                 return true;
@@ -70,14 +105,14 @@ public sealed class AuthService
         }
         catch
         {
-            // DB unreachable -> Fallback to Encrypted Offline License Token
-            if (_licenseService.IsLicenseValidOffline(username, out var offlineReason))
+            // DB unreachable -> Fallback to Secure Encrypted Offline License Token
+            if (_licenseService.IsLicenseValidOffline(username.Trim(), password, out var offlineReason))
             {
-                user = new AppUser(1, username, "User");
+                user = new AppUser(1, username.Trim(), "User");
                 return true;
             }
 
-            error = offlineReason ?? "Offline license validation failed.";
+            error = offlineReason ?? "Offline credentials validation failed.";
             return false;
         }
 
@@ -107,9 +142,9 @@ public sealed class AuthService
 
             var user = new User
             {
-                Username = username,
-                PasswordHash = HashPassword(password),
-                Email = email,
+                Username = username.Trim(),
+                PasswordHash = PasswordHasher.HashPassword(password),
+                Email = email.Trim(),
                 HardwareId = hardwareId,
                 Role = "User",
                 IsApproved = false,
@@ -119,17 +154,27 @@ public sealed class AuthService
             context.Users.Add(user);
             context.SaveChanges();
 
-            // Send async alert to Admin via Telegram
-            _ = Task.Run(async () =>
+            // Send async alert to Admin via Telegram ONLY if explicitly configured by admin
+            if (_telegramService.IsConfigured)
             {
-                await _telegramService.SendRegistrationAlertAsync(
-                    username,
-                    string.IsNullOrWhiteSpace(email) ? "N/A" : email,
-                    hardwareId,
-                    Environment.MachineName);
-            });
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _telegramService.SendRegistrationAlertAsync(
+                            username,
+                            string.IsNullOrWhiteSpace(email) ? "N/A" : email,
+                            hardwareId,
+                            Environment.MachineName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Serilog.Log.Warning(ex, "Failed to send Telegram registration alert.");
+                    }
+                });
+            }
 
-            return (true, "Registration request submitted. Pending Admin approval.");
+            return (true, "Registration request submitted. Pending Administrator approval.");
         }
         catch (Exception ex)
         {
@@ -190,7 +235,7 @@ public sealed class AuthService
         {
             user.IsApproved = true;
             context.SaveChanges();
-            _licenseService.SaveApprovedLicense(user.Username);
+            _licenseService.SaveApprovedLicense(user.Username, user.PasswordHash);
         }
     }
 
@@ -207,6 +252,9 @@ public sealed class AuthService
 
     public async Task<RemoteApprovalStatus> CheckRemoteTelegramApprovalAsync(string username)
     {
+        if (!_telegramService.IsConfigured)
+            return RemoteApprovalStatus.Pending;
+
         var hwid = HardwareIdService.GetHardwareId();
         var status = await _telegramService.CheckApprovalStatusAsync(username, hwid);
 
@@ -220,20 +268,12 @@ public sealed class AuthService
                 {
                     user.IsApproved = true;
                     context.SaveChanges();
+                    _licenseService.SaveApprovedLicense(user.Username, user.PasswordHash);
                 }
             }
             catch { }
-
-            // Cache approved offline license
-            _licenseService.SaveApprovedLicense(username);
         }
 
         return status;
-    }
-
-    private static string HashPassword(string password)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
