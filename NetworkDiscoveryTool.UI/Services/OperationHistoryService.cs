@@ -59,7 +59,7 @@ public sealed class OperationHistoryService : IOperationHistoryService
         if (!string.IsNullOrWhiteSpace(operationName))
             query = query.Where(o => o.OperationName == operationName);
         if (!string.IsNullOrWhiteSpace(username))
-            query = query.Where(o => o.Username.Contains(username));
+            query = query.Where(o => o.Username != null && o.Username.Contains(username));
         if (!string.IsNullOrWhiteSpace(result))
             query = query.Where(o => o.Result == result);
         if (from.HasValue)

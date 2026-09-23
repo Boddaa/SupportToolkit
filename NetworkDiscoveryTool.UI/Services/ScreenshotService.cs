@@ -17,16 +17,17 @@ public interface IScreenshotService
 
 public sealed class ScreenshotService : IScreenshotService
 {
-    private static readonly string HistoryFile = Path.Combine(
-        Path.GetDirectoryName(Environment.ProcessPath)
-            ?? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "screenshot_history.json");
+    private static readonly string HistoryDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SupportToolKit");
+    private static readonly string HistoryFile = Path.Combine(HistoryDirectory, "screenshot_history.json");
 
     public Task<byte[]> CaptureFullScreenAsync()
     {
         return Task.Run(() =>
         {
-            var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+            var screen = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens.FirstOrDefault();
+            var bounds = screen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
             using var bitmap = new System.Drawing.Bitmap(bounds.Width, bounds.Height);
             using var g = System.Drawing.Graphics.FromImage(bitmap);
             g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
@@ -95,18 +96,39 @@ public sealed class ScreenshotService : IScreenshotService
 
     public Task<string> CopyToClipboardAsync(byte[] data)
     {
-        return Task.Run(() =>
+        var tcs = new TaskCompletionSource<string>();
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        void PerformCopy()
         {
-            using var ms = new MemoryStream(data);
-            var bi = new System.Windows.Media.Imaging.BitmapImage();
-            bi.BeginInit();
-            bi.StreamSource = ms;
-            bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-            bi.EndInit();
-            bi.Freeze();
-            System.Windows.Clipboard.SetImage(bi);
-            return "Copied to clipboard";
-        });
+            try
+            {
+                using var ms = new MemoryStream(data);
+                var bi = new System.Windows.Media.Imaging.BitmapImage();
+                bi.BeginInit();
+                bi.StreamSource = ms;
+                bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bi.EndInit();
+                bi.Freeze();
+                System.Windows.Clipboard.SetImage(bi);
+                tcs.TrySetResult("Copied to clipboard");
+            }
+            catch (Exception ex)
+            {
+                tcs.TrySetException(ex);
+            }
+        }
+
+        if (dispatcher != null && !dispatcher.CheckAccess())
+        {
+            dispatcher.InvokeAsync(PerformCopy);
+        }
+        else
+        {
+            PerformCopy();
+        }
+
+        return tcs.Task;
     }
 
     public List<ScreenshotEntry> LoadHistory()
@@ -128,6 +150,7 @@ public sealed class ScreenshotService : IScreenshotService
     {
         try
         {
+            Directory.CreateDirectory(HistoryDirectory);
             var json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(HistoryFile, json);
         }

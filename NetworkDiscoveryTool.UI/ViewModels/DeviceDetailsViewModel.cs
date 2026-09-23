@@ -264,7 +264,7 @@ public sealed partial class DeviceDetailsViewModel : ObservableObject
             await using var ctx = await _contextFactory.CreateDbContextAsync();
             var logs = await ctx.OperationLogs
                 .AsNoTracking()
-                .Where(o => o.Description.Contains(ip))
+                .Where(o => o.Description != null && o.Description.Contains(ip))
                 .OrderByDescending(o => o.Timestamp)
                 .Take(20)
                 .ToListAsync();
@@ -273,9 +273,9 @@ public sealed partial class DeviceDetailsViewModel : ObservableObject
                 History.Add(new HistoryEntry
                 {
                     Operation = log.OperationName,
-                    Description = log.Description,
+                    Description = log.Description ?? string.Empty,
                     Date = log.Timestamp.ToString("yyyy-MM-dd HH:mm"),
-                    Result = log.Result,
+                    Result = log.Result ?? string.Empty,
                     Duration = $"{log.DurationMs}ms",
                 });
         }
