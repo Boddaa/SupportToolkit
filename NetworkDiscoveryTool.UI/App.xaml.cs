@@ -19,7 +19,6 @@ using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
 using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.Scan;
-using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
 using NetworkDiscoveryTool.UI.Views.SqlTester;
 using NetworkDiscoveryTool.UI.Views.SystemInfo;
@@ -266,7 +265,6 @@ public partial class App : System.Windows.Application
         services.AddSingleton<Services.IProcessMonitorService, Services.ProcessMonitorService>();
         services.AddSingleton<Services.IProcessControlService, Services.ProcessControlService>();
         services.AddSingleton<Services.ILogCollectionService, Services.LogCollectionService>();
-        services.AddSingleton<Services.IScreenshotService, Services.ScreenshotService>();
         services.AddSingleton<Services.ISettingsService, Services.SettingsService>();
         services.AddSingleton<Services.IOperationHistoryService, Services.OperationHistoryService>();
 
@@ -283,7 +281,6 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IisMonitorViewModel>();
         services.AddSingleton<ProcessManagerViewModel>();
         services.AddSingleton<LogCollectorViewModel>();
-        services.AddSingleton<ScreenshotViewModel>();
         services.AddSingleton<OperationHistoryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddTransient<DeviceDetailsViewModel>();
@@ -302,7 +299,6 @@ public partial class App : System.Windows.Application
         services.AddTransient<IisMonitorPage>();
         services.AddTransient<ProcessManagerPage>();
         services.AddTransient<LogCollectorPage>();
-        services.AddTransient<ScreenshotPage>();
         services.AddTransient<OperationHistoryPage>();
         services.AddTransient<SettingsPage>();
         services.AddTransient<MainWindow>();

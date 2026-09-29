@@ -16,7 +16,6 @@ public interface INavigationService
     void NavigateToIisMonitor();
     void NavigateToProcessManager();
     void NavigateToLogCollector();
-    void NavigateToScreenshot();
     void NavigateToOperationHistory();
     void NavigateToSettings();
     void NavigateToDeviceDetails(int deviceId);

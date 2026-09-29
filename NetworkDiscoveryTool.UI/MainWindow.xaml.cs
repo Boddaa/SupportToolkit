@@ -2,6 +2,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,11 +18,15 @@ using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
 using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.Scan;
-using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
 using NetworkDiscoveryTool.UI.Views.SqlTester;
 using NetworkDiscoveryTool.UI.Views.SystemInfo;
 using NetworkDiscoveryTool.UI.Views.WindowsServices;
+using Microsoft.EntityFrameworkCore;
+using NetworkDiscoveryTool.Data;
+using NetworkDiscoveryTool.Core.Models;
+using NetworkDiscoveryTool.UI.Models;
+using System.Threading;
 
 namespace NetworkDiscoveryTool.UI;
 
@@ -31,13 +36,16 @@ public partial class MainWindow : Window
     private readonly DashboardViewModel _dashboardVm;
     private readonly CurrentUserService _currentUser;
     private readonly ISettingsService _settings;
+    private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private bool _isSidebarCollapsed;
+    private CancellationTokenSource? _searchCts;
 
     public MainWindow(
         INavigationService navigation,
         DashboardViewModel dashboardVm,
         CurrentUserService currentUser,
-        ISettingsService settings)
+        ISettingsService settings,
+        IDbContextFactory<AppDbContext> contextFactory)
     {
         InitializeComponent();
 
@@ -45,9 +53,12 @@ public partial class MainWindow : Window
         _dashboardVm = dashboardVm;
         _currentUser = currentUser;
         _settings = settings;
+        _contextFactory = contextFactory;
 
         DataContext = dashboardVm;
         navigation.SetFrame(MainFrame);
+
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
 
         MainFrame.Navigated += OnMainFrameNavigated;
 
@@ -214,10 +225,6 @@ public partial class MainWindow : Window
             BtnLogCollector.Style = activeStyle;
             pageName = "LogCollector";
         }
-        else if (content is ScreenshotPage)
-        {
-            pageName = "Screenshot";
-        }
         else if (content is OperationHistoryPage)
         {
             pageName = "OperationHistory";
@@ -282,7 +289,6 @@ public partial class MainWindow : Window
     private void NavigateToIisMonitor(object sender, RoutedEventArgs e) => _navigation.NavigateToIisMonitor();
     private void NavigateToProcessManager(object sender, RoutedEventArgs e) => _navigation.NavigateToProcessManager();
     private void NavigateToLogCollector(object sender, RoutedEventArgs e) => _navigation.NavigateToLogCollector();
-    private void NavigateToScreenshot(object sender, RoutedEventArgs e) => _navigation.NavigateToScreenshot();
     private void NavigateToOperationHistory(object sender, RoutedEventArgs e) => _navigation.NavigateToOperationHistory();
     private void NavigateToSettings(object sender, RoutedEventArgs e) => _navigation.NavigateToSettings();
 
@@ -310,7 +316,7 @@ public partial class MainWindow : Window
             var labels = new[] {
                 NavLabel, LblDashboard, LblNetworkDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
                 LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor, LblProcessManager,
-                LblLogCollector, LblScreenshot, LblSettings, LblLogout
+                LblLogCollector, LblSettings, LblLogout
             };
             foreach (var lbl in labels)
             {
@@ -322,36 +328,307 @@ public partial class MainWindow : Window
                 SidebarProfile.Visibility = _isSidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
             if (SidebarBrandText != null)
                 SidebarBrandText.Visibility = _isSidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
+            if (SidebarFooterLogo != null)
+                SidebarFooterLogo.Visibility = _isSidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
         }
         catch { }
     }
 
-    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        var text = SearchBox.Text?.Trim().ToLower();
-        var navButtons = new[] {
-            (BtnDashboard, "Dashboard"),
-            (BtnNetworkDiscovery, "Network Discovery"),
-            (BtnLiveTopology, "Live Topology"),
-            (BtnPingTool, "Ping Tool"),
-            (BtnPortChecker, "Port Checker"),
-            (BtnSystemInfo, "System Info"),
-            (BtnWindowsServices, "Services"),
-            (BtnSqlTester, "SQL Tester"),
-            (BtnIisMonitor, "IIS Monitor"),
-            (BtnProcessManager, "Process Manager"),
-            (BtnLogCollector, "Log Collector"),
-            (BtnScreenshot, "Screenshot"),
-            (BtnSettings, "Settings"),
+        // Ctrl + / or Ctrl + F to focus universal search
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
+            (e.Key == Key.Oem2 || e.Key == Key.Divide || e.Key == Key.F))
+        {
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+        }
+    }
+
+    private async void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    {
+        var text = SearchBox.Text?.Trim();
+        SearchClearBtn.Visibility = string.IsNullOrEmpty(text) ? Visibility.Collapsed : Visibility.Visible;
+
+        if (string.IsNullOrWhiteSpace(text) || text.Length < 1)
+        {
+            _searchCts?.Cancel();
+            SearchPopup.IsOpen = false;
+            SearchResultsList.ItemsSource = null;
+            return;
+        }
+
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var ct = _searchCts.Token;
+
+        try
+        {
+            await Task.Delay(120, ct);
+            if (ct.IsCancellationRequested) return;
+
+            var results = await PerformUniversalSearchAsync(text, ct);
+            if (ct.IsCancellationRequested) return;
+
+            SearchResultsList.ItemsSource = results;
+            if (results.Count > 0)
+            {
+                SearchResultsList.SelectedIndex = 0;
+                SearchEmptyNotice.Visibility = Visibility.Collapsed;
+                SearchResultsSummary.Text = $"{results.Count} match(es) found";
+            }
+            else
+            {
+                SearchEmptyNotice.Visibility = Visibility.Visible;
+                SearchEmptyText.Text = $"No devices or tools matching \"{text}\"";
+                SearchResultsSummary.Text = "No results found";
+            }
+
+            SearchPopup.IsOpen = true;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Universal search error");
+        }
+    }
+
+    private async Task<List<UniversalSearchResultItem>> PerformUniversalSearchAsync(string term, CancellationToken ct)
+    {
+        var list = new List<UniversalSearchResultItem>();
+        var lower = term.ToLowerInvariant();
+        var converter = new System.Windows.Media.BrushConverter();
+
+        // 1. Navigation & Tools matches
+        var allTools = new (string Name, string Desc, string Glyph, Action Act)[]
+        {
+            ("Dashboard", "Overview & real-time network topology", "\uE80F", () => _navigation.NavigateToDashboard()),
+            ("Network Discovery", "Subnet ARP & ICMP discovery scanner", "\uEC27", () => _navigation.NavigateToNetworkDiscovery()),
+            ("Live Topology", "Interactive network map & device nodes", "\uE701", () => _navigation.NavigateToLiveTopology()),
+            ("Ping Tool", "High-precision latency & continuous reachability ping", "\uE754", () => _navigation.NavigateToPingTool()),
+            ("Port Checker", "TCP socket port auditing & banner grabber", "\uE749", () => _navigation.NavigateToPortChecker()),
+            ("System Information", "OS, hardware, CPU, RAM & network adapters", "\uE770", () => _navigation.NavigateToSystemInfo()),
+            ("Windows Services", "Local & remote service control manager", "\uE713", () => _navigation.NavigateToWindowsServices()),
+            ("SQL Tester", "Database query runner & connection diagnostics", "\uE943", () => _navigation.NavigateToSqlTester()),
+            ("IIS Monitor", "Web server sites & application pools supervisor", "\uE774", () => _navigation.NavigateToIisMonitor()),
+            ("Process Manager", "Real-time task supervisor, threads & performance", "\uE9D9", () => _navigation.NavigateToProcessManager()),
+            ("Log Collector", "Windows event logs & IIS log forensics", "\uE8A5", () => _navigation.NavigateToLogCollector()),
+            ("Operation History", "Audit logs & diagnostic activity trail", "\uE81C", () => _navigation.NavigateToOperationHistory()),
+            ("Settings", "Telegram alerts, theme, credentials & scan config", "\uE713", () => _navigation.NavigateToSettings())
         };
 
-        foreach (var (btn, name) in navButtons)
+        foreach (var tool in allTools)
         {
-            if (string.IsNullOrEmpty(text))
-                btn.Visibility = Visibility.Visible;
-            else
-                btn.Visibility = name.ToLower().Contains(text) ? Visibility.Visible : Visibility.Collapsed;
+            if (tool.Name.ToLowerInvariant().Contains(lower) || tool.Desc.ToLowerInvariant().Contains(lower))
+            {
+                list.Add(new UniversalSearchResultItem
+                {
+                    Title = tool.Name,
+                    Subtitle = tool.Desc,
+                    Category = "TOOL",
+                    IconGlyph = tool.Glyph,
+                    IconColor = (System.Windows.Media.Brush)converter.ConvertFrom("#38BDF8")!,
+                    IconBg = (System.Windows.Media.Brush)converter.ConvertFrom("#150EA5E9")!,
+                    IconBorder = (System.Windows.Media.Brush)converter.ConvertFrom("#300EA5E9")!,
+                    BadgeColor = (System.Windows.Media.Brush)converter.ConvertFrom("#A855F7")!,
+                    BadgeBg = (System.Windows.Media.Brush)converter.ConvertFrom("#15A855F7")!,
+                    BadgeBorder = (System.Windows.Media.Brush)converter.ConvertFrom("#30A855F7")!,
+                    OnClick = () =>
+                    {
+                        SearchPopup.IsOpen = false;
+                        SearchBox.Text = string.Empty;
+                        tool.Act();
+                    }
+                });
+            }
         }
+
+        // 2. Query Devices from Database
+        try
+        {
+            using var ctx = await _contextFactory.CreateDbContextAsync(ct);
+            var devices = await ctx.Devices
+                .AsNoTracking()
+                .Where(d => EF.Functions.Like(d.IP, $"%{term}%") ||
+                            (d.Hostname != null && EF.Functions.Like(d.Hostname, $"%{term}%")) ||
+                            (d.MAC != null && EF.Functions.Like(d.MAC, $"%{term}%")) ||
+                            (d.Vendor != null && EF.Functions.Like(d.Vendor, $"%{term}%")) ||
+                            (d.OS != null && EF.Functions.Like(d.OS, $"%{term}%")) ||
+                            (d.DeviceType != null && EF.Functions.Like(d.DeviceType, $"%{term}%")))
+                .OrderByDescending(d => d.Status == "Online")
+                .ThenBy(d => d.IP)
+                .Take(12)
+                .ToListAsync(ct);
+
+            foreach (var d in devices)
+            {
+                var isOnline = string.Equals(d.Status, "Online", StringComparison.OrdinalIgnoreCase);
+                var glyph = GetDeviceIconGlyph(d.DeviceType, d.OS);
+                var subtitleParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(d.Hostname)) subtitleParts.Add(d.Hostname);
+                if (!string.IsNullOrWhiteSpace(d.Vendor)) subtitleParts.Add(d.Vendor);
+                if (!string.IsNullOrWhiteSpace(d.MAC)) subtitleParts.Add(d.MAC);
+                if (!string.IsNullOrWhiteSpace(d.OS)) subtitleParts.Add(d.OS);
+                var sub = subtitleParts.Count > 0 ? string.Join("  •  ", subtitleParts) : "Discovered Network Asset";
+
+                var targetIp = d.IP;
+                var targetId = d.Id;
+
+                list.Add(new UniversalSearchResultItem
+                {
+                    Title = d.IP,
+                    Subtitle = sub,
+                    Category = !string.IsNullOrWhiteSpace(d.DeviceType) ? d.DeviceType.ToUpperInvariant() : "DEVICE",
+                    Status = isOnline ? "Online" : "Offline",
+                    ExtraInfo = d.LatencyMs > 0 ? $"{d.LatencyMs} ms" : string.Empty,
+                    IconGlyph = glyph,
+                    IconColor = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#10B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#94A3B8")!,
+                    IconBg = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#1510B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#1594A3B8")!,
+                    IconBorder = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#3010B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#2094A3B8")!,
+                    BadgeColor = (System.Windows.Media.Brush)converter.ConvertFrom("#38BDF8")!,
+                    BadgeBg = (System.Windows.Media.Brush)converter.ConvertFrom("#150EA5E9")!,
+                    BadgeBorder = (System.Windows.Media.Brush)converter.ConvertFrom("#300EA5E9")!,
+                    StatusDotColor = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#10B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#F43F5E")!,
+                    StatusTextColor = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#10B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#F43F5E")!,
+                    StatusBg = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#1510B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#15F43F5E")!,
+                    StatusBorder = isOnline ? (System.Windows.Media.Brush)converter.ConvertFrom("#3010B981")! : (System.Windows.Media.Brush)converter.ConvertFrom("#30F43F5E")!,
+                    OnClick = () =>
+                    {
+                        SearchPopup.IsOpen = false;
+                        SearchBox.Text = string.Empty;
+                        if (targetId > 0)
+                            _navigation.NavigateToDeviceDetails(targetId);
+                        else
+                            _navigation.NavigateToDeviceDetails(targetIp);
+                    }
+                });
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Serilog.Log.Warning(ex, "Error querying devices for universal search");
+        }
+
+        // 3. Direct IP inspection quick action
+        var cleanTerm = term.Trim();
+        if (System.Net.IPAddress.TryParse(cleanTerm, out _) ||
+            (cleanTerm.Length >= 4 && cleanTerm.Any(char.IsDigit) && cleanTerm.Contains('.')))
+        {
+            if (!list.Any(x => x.Title.Equals(cleanTerm, StringComparison.OrdinalIgnoreCase)))
+            {
+                list.Insert(0, new UniversalSearchResultItem
+                {
+                    Title = $"Inspect {cleanTerm}",
+                    Subtitle = "Open forensic device inspection & port sweep for this IP",
+                    Category = "QUICK INSPECT",
+                    IconGlyph = "\uE7F8",
+                    IconColor = (System.Windows.Media.Brush)converter.ConvertFrom("#F59E0B")!,
+                    IconBg = (System.Windows.Media.Brush)converter.ConvertFrom("#15F59E0B")!,
+                    IconBorder = (System.Windows.Media.Brush)converter.ConvertFrom("#30F59E0B")!,
+                    BadgeColor = (System.Windows.Media.Brush)converter.ConvertFrom("#F59E0B")!,
+                    BadgeBg = (System.Windows.Media.Brush)converter.ConvertFrom("#15F59E0B")!,
+                    BadgeBorder = (System.Windows.Media.Brush)converter.ConvertFrom("#30F59E0B")!,
+                    OnClick = () =>
+                    {
+                        SearchPopup.IsOpen = false;
+                        SearchBox.Text = string.Empty;
+                        _navigation.NavigateToDeviceDetails(cleanTerm);
+                    }
+                });
+            }
+        }
+
+        return list;
+    }
+
+    private static string GetDeviceIconGlyph(string? type, string? os)
+    {
+        var t = (type ?? "").ToLowerInvariant();
+        var o = (os ?? "").ToLowerInvariant();
+
+        if (t.Contains("server") || o.Contains("server")) return "\uE839";
+        if (t.Contains("switch") || t.Contains("router") || t.Contains("gateway")) return "\uE81B";
+        if (t.Contains("printer")) return "\uE749";
+        if (t.Contains("mobile") || t.Contains("phone") || t.Contains("android") || t.Contains("ios")) return "\uE8EA";
+        return "\uE7F8";
+    }
+
+    private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Down && SearchPopup.IsOpen && SearchResultsList.Items.Count > 0)
+        {
+            SearchResultsList.Focus();
+            if (SearchResultsList.SelectedIndex < 0)
+                SearchResultsList.SelectedIndex = 0;
+            var item = (ListBoxItem)SearchResultsList.ItemContainerGenerator.ContainerFromIndex(SearchResultsList.SelectedIndex);
+            item?.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            ExecuteCurrentSearchResult();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            SearchPopup.IsOpen = false;
+            e.Handled = true;
+        }
+    }
+
+    private void SearchResultsList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            ExecuteCurrentSearchResult();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            SearchPopup.IsOpen = false;
+            SearchBox.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Up && SearchResultsList.SelectedIndex == 0)
+        {
+            SearchBox.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void SearchResultsList_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        ExecuteCurrentSearchResult();
+    }
+
+    private void ExecuteCurrentSearchResult()
+    {
+        if (SearchResultsList.SelectedItem is UniversalSearchResultItem item)
+        {
+            item.OnClick?.Invoke();
+        }
+        else if (SearchResultsList.Items.Count > 0 && SearchResultsList.Items[0] is UniversalSearchResultItem firstItem)
+        {
+            firstItem.OnClick?.Invoke();
+        }
+        else
+        {
+            var term = SearchBox.Text?.Trim();
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                SearchPopup.IsOpen = false;
+                SearchBox.Text = string.Empty;
+                _navigation.NavigateToDeviceDetails(term);
+            }
+        }
+    }
+
+    private void OnSearchClearClick(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Text = string.Empty;
+        SearchPopup.IsOpen = false;
+        SearchBox.Focus();
     }
 
     private void OnNotificationClick(object sender, RoutedEventArgs e)

@@ -10,7 +10,6 @@ using NetworkDiscoveryTool.UI.Views.OperationHistory;
 using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
 using NetworkDiscoveryTool.UI.Views.Scan;
-using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
 using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.SqlTester;
@@ -56,7 +55,6 @@ public class NavigationService : INavigationService
     public void NavigateToIisMonitor() => Navigate(GetPage<IisMonitorPage>());
     public void NavigateToProcessManager() => Navigate(GetPage<ProcessManagerPage>());
     public void NavigateToLogCollector() => Navigate(GetPage<LogCollectorPage>());
-    public void NavigateToScreenshot() => Navigate(GetPage<ScreenshotPage>());
     public void NavigateToOperationHistory() => Navigate(GetPage<OperationHistoryPage>());
     public void NavigateToSettings() => Navigate(GetPage<SettingsPage>());
 
@@ -110,9 +108,6 @@ public class NavigationService : INavigationService
                 break;
             case "LogCollector":
                 NavigateToLogCollector();
-                break;
-            case "Screenshot":
-                NavigateToScreenshot();
                 break;
             case "OperationHistory":
                 NavigateToOperationHistory();

@@ -155,7 +155,8 @@
                     </Border>
 
                     <!-- Universal Search Bar with Ctrl / Shortcut -->
-                    <Border Grid.Column="2" MaxWidth="440" Height="38" CornerRadius="10" Background="{DynamicResource InputBgBrush}"
+                    <!-- Universal Search Bar with Ctrl / Shortcut -->
+                    <Border x:Name="SearchBarContainer" Grid.Column="2" MaxWidth="440" Height="38" CornerRadius="10" Background="{DynamicResource InputBgBrush}"
                             BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" VerticalAlignment="Center" Margin="0,0,16,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -170,7 +171,8 @@
                             <!-- Search TextBox -->
                             <TextBox x:Name="SearchBox" Grid.Column="1" Background="Transparent" BorderThickness="0"
                                      Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" VerticalContentAlignment="Center"
-                                     CaretBrush="{DynamicResource AccentBrush}" TextChanged="OnSearchTextChanged"/>
+                                     CaretBrush="{DynamicResource AccentBrush}" TextChanged="OnSearchTextChanged"
+                                     PreviewKeyDown="SearchBox_PreviewKeyDown"/>
                             
                             <!-- Placeholder -->
                             <TextBlock Grid.Column="1" IsHitTestVisible="False" Text="Search devices, IP, MAC, hostname..."
@@ -190,12 +192,144 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <!-- Shortcut Tag -->
-                            <Border Grid.Column="2" Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="6,2" Margin="0,0,8,0" VerticalAlignment="Center">
-                                <TextBlock Text="Ctrl /" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
-                            </Border>
+                            <!-- Actions (Clear button & Shortcut Tag) -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0">
+                                <Button x:Name="SearchClearBtn" Width="22" Height="22" Background="Transparent" BorderThickness="0"
+                                        Cursor="Hand" ToolTip="Clear search" Click="OnSearchClearClick" Margin="0,0,4,0" Visibility="Collapsed">
+                                    <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                </Button>
+                                <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="6,2" VerticalAlignment="Center">
+                                    <TextBlock Text="Ctrl /" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}"/>
+                                </Border>
+                            </StackPanel>
                         </Grid>
                     </Border>
+
+                    <!-- Floating Universal Search Results Dropdown -->
+                    <Popup x:Name="SearchPopup" PlacementTarget="{Binding ElementName=SearchBarContainer}"
+                           Placement="Bottom" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+                           VerticalOffset="6" MinWidth="440" MaxWidth="520">
+                        <Border Background="#0B1324" BorderBrush="#3538BDF8" BorderThickness="1.5" CornerRadius="12"
+                                Padding="0" SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="28" Color="#000000" Opacity="0.75" ShadowDepth="6"/>
+                            </Border.Effect>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Results List -->
+                                <ScrollViewer Grid.Row="0" MaxHeight="380" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <StackPanel>
+                                        <ListBox x:Name="SearchResultsList" Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                 SelectionMode="Single"
+                                                 PreviewKeyDown="SearchResultsList_PreviewKeyDown"
+                                                 MouseLeftButtonUp="SearchResultsList_MouseLeftButtonUp">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="12,8"/>
+                                                    <Setter Property="Margin" Value="6,2"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="ListBoxItem">
+                                                                <Border x:Name="ItemBorder" CornerRadius="8" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                                    <ContentPresenter/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#1A38BDF8"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                        <Setter TargetName="ItemBorder" Property="Background" Value="#250EA5E9"/>
+                                                                        <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#4038BDF8"/>
+                                                                        <Setter TargetName="ItemBorder" Property="BorderThickness" Value="1"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <!-- Icon Avatar -->
+                                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                                                Background="{Binding IconBg}" BorderBrush="{Binding IconBorder}" BorderThickness="1"
+                                                                Margin="0,0,10,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding IconGlyph}" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                                                       Foreground="{Binding IconColor}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+
+                                                        <!-- Main Details -->
+                                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
+                                                                <Border Background="{Binding BadgeBg}" BorderBrush="{Binding BadgeBorder}" BorderThickness="1" CornerRadius="4" Padding="5,1" VerticalAlignment="Center">
+                                                                    <TextBlock Text="{Binding Category}" FontSize="9" FontWeight="Bold" Foreground="{Binding BadgeColor}"/>
+                                                                </Border>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                                                                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+
+                                                        <!-- Right Status / Latency / Hint -->
+                                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="8,0,0,0">
+                                                            <Border Visibility="{Binding HasStatus, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                                    Background="{Binding StatusBg}" BorderBrush="{Binding StatusBorder}" BorderThickness="1"
+                                                                    CornerRadius="4" Padding="6,2" HorizontalAlignment="Right">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusDotColor}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                                    <TextBlock Text="{Binding Status}" FontSize="9" FontWeight="Bold" Foreground="{Binding StatusTextColor}" VerticalAlignment="Center"/>
+                                                                </StackPanel>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding ExtraInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"
+                                                                       HorizontalAlignment="Right" Margin="0,3,0,0"
+                                                                       Visibility="{Binding HasExtraInfo, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <!-- No Results Notice -->
+                                        <Border x:Name="SearchEmptyNotice" Padding="20,22" Visibility="Collapsed">
+                                            <StackPanel HorizontalAlignment="Center">
+                                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="20" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                                <TextBlock x:Name="SearchEmptyText" Text="No matching devices or tools found" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <!-- Footer Toolbar -->
+                                <Border Grid.Row="1" Background="#070D1B" BorderBrush="#1E2E4A" BorderThickness="0,1,0,0"
+                                        CornerRadius="0,0,11,11" Padding="12,7">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="SearchResultsSummary" Text="Showing results" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="↵ Open" FontSize="10" FontWeight="SemiBold" Foreground="#38BDF8" Margin="0,0,10,0"/>
+                                            <TextBlock Text="Esc Close" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Popup>
 
                     <!-- Interface Selector & Active Scan Widget -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
@@ -408,35 +542,20 @@
                                 </Button>
 
                                 <!-- Hidden items to preserve code-behind handlers if needed -->
-                                <Button x:Name="BtnScreenshot" Visibility="Collapsed" Click="NavigateToScreenshot"><TextBlock x:Name="LblScreenshot"/></Button>
                                 <Button x:Name="BtnLogout" Visibility="Collapsed" Click="Logout"><TextBlock x:Name="LblLogout"/></Button>
                                 <Border x:Name="SidebarProfile" Visibility="Collapsed"/>
                             </StackPanel>
                         </ScrollViewer>
 
-                        <!-- Bottom System Status & Scan Engine Status Cards -->
-                        <StackPanel Grid.Row="2" Margin="14,8,14,14">
-                            <!-- System Status -->
-                            <Border Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,8">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="System Status" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                    </StackPanel>
-                                    <TextBlock Text="All Systems Operational" FontSize="10" Foreground="{DynamicResource SuccessBrush}" Margin="15,0,0,0"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Scan Engine Status Mini Widget with Sparkline Wave -->
-                            <Border Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="10" Padding="12,9">
-                                <StackPanel>
-                                    <TextBlock Text="Scan Engine Status" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,0,2"/>
-                                    <TextBlock Text="Idle" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,6"/>
-                                    <Polyline Points="0,10 10,12 20,6 30,13 40,4 50,10 60,5 70,11 80,3 90,12 100,6 110,10 120,4 130,13 140,7 150,12 160,3 170,11 180,6 190,12"
-                                              Stroke="#10B981" StrokeThickness="1.5" SnapsToDevicePixels="True"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
+                        <!-- Bottom Corporate Identity Logo -->
+                        <Border x:Name="SidebarFooterLogo" Grid.Row="2" Margin="12,8,12,14"
+                                Background="#0A1222" BorderBrush="#1E2E4A" BorderThickness="1"
+                                CornerRadius="10" Padding="10,8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
+                            <Image x:Name="SidebarFullLogo"
+                                   Source="pack://application:,,,/SupportToolKit;component/Assets/mti_logo.png"
+                                   Stretch="Uniform" MaxHeight="72" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
 
                     </Grid>
                 </Border>

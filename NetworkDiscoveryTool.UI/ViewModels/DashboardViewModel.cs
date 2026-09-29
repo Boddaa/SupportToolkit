@@ -158,7 +158,7 @@ public sealed partial class DashboardViewModel : ObservableObject
         QuickActions.Add(new() { Name = "SQL Tester", Description = "Run SQL queries", Icon = "🗄", Command = new RelayCommand(() => _navigation.NavigateToSqlTester()) });
         QuickActions.Add(new() { Name = "IIS Monitor", Description = "Monitor IIS sites & pools", Icon = "🌍", Command = new RelayCommand(() => _navigation.NavigateToIisMonitor()) });
         QuickActions.Add(new() { Name = "Log Collector", Description = "Browse and view log files", Icon = "📄", Command = new RelayCommand(() => _navigation.NavigateToLogCollector()) });
-        QuickActions.Add(new() { Name = "Screenshot", Description = "Capture screen to file", Icon = "📸", Command = new RelayCommand(() => _navigation.NavigateToScreenshot()) });
+        QuickActions.Add(new() { Name = "Process Manager", Description = "Inspect processes & system performance", Icon = "⚡", Command = new RelayCommand(() => _navigation.NavigateToProcessManager()) });
     }
 
     // === Real Computed Scan KPIs ===

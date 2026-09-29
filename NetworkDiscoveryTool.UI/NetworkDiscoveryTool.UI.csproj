@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\mti_logo.png" />
     <None Update="telegram.enc">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
