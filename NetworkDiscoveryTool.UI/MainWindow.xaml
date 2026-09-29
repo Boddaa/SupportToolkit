@@ -375,6 +375,14 @@
                                     </StackPanel>
                                 </Button>
 
+                                <!-- 9. Process Manager -->
+                                <Button x:Name="BtnProcessManager" Style="{StaticResource NetScopeNavBtn}" Click="NavigateToProcessManager">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="LblProcessManager" Text="Process Manager" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <!-- 9. SQL Tester -->
                                 <Button x:Name="BtnSqlTester" Style="{StaticResource NetScopeNavBtn}" Click="NavigateToSqlTester">
                                     <StackPanel Orientation="Horizontal">

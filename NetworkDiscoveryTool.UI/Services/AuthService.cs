@@ -120,6 +120,50 @@ public sealed class AuthService
         return false;
     }
 
+    public bool ValidateRememberedUser(string username, out AppUser? user, out string? error)
+    {
+        user = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            error = "No remembered user specified.";
+            return false;
+        }
+
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var dbUser = context.Users.FirstOrDefault(u => u.Username == username.Trim());
+            if (dbUser is not null)
+            {
+                if (!dbUser.IsApproved)
+                {
+                    error = "Account approval has been revoked or is pending.";
+                    return false;
+                }
+
+                user = new AppUser(dbUser.Id, dbUser.Username, dbUser.Role);
+                return true;
+            }
+        }
+        catch
+        {
+            // DB unreachable -> check offline license
+            if (_licenseService.IsLicenseValidOffline(username.Trim(), out var offlineReason))
+            {
+                user = new AppUser(1, username.Trim(), "User");
+                return true;
+            }
+
+            error = offlineReason ?? "Offline credentials validation failed.";
+            return false;
+        }
+
+        error = "User not found in system.";
+        return false;
+    }
+
     public (bool Success, string Message) Register(string username, string password, string email = "")
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))

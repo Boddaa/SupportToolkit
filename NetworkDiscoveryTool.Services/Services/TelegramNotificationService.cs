@@ -21,8 +21,8 @@ public sealed class TelegramNotificationService
     // TELEGRAM BOT INTEGRATION CONFIGURATION
     // Configured via Settings by system administrator
     // =========================================================================
-    public string BotToken { get; set; } = string.Empty;
-    public string AdminChatId { get; set; } = string.Empty;
+    public string BotToken { get; set; } = "8914418594:AAGMMqY91qu0MnkEM453gjclAm_RyOyGxfc";
+    public string AdminChatId { get; set; } = "1119565273";
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(BotToken) && !string.IsNullOrWhiteSpace(AdminChatId);
 

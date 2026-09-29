@@ -17,6 +17,7 @@ using NetworkDiscoveryTool.UI.Views.Login;
 using NetworkDiscoveryTool.UI.Views.OperationHistory;
 using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
+using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.Scan;
 using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
@@ -176,8 +177,52 @@ public partial class App : System.Windows.Application
             var dbToken = settingsService.GetAsync("TelegramBotToken").GetAwaiter().GetResult();
             var dbChatId = settingsService.GetAsync("TelegramAdminChatId").GetAwaiter().GetResult();
 
-            telegramService.BotToken = dbToken ?? string.Empty;
-            telegramService.AdminChatId = dbChatId ?? string.Empty;
+            const string defaultBotToken = "8914418594:AAGMMqY91qu0MnkEM453gjclAm_RyOyGxfc";
+            const string defaultAdminChatId = "1119565273";
+
+            // 1. Check for encrypted distribution file 'telegram.enc' next to the executable
+            var processDir = Path.GetDirectoryName(Environment.ProcessPath) ?? string.Empty;
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var dbFolder = Path.GetDirectoryName(DatabasePath) ?? string.Empty;
+            string[] searchPaths =
+            [
+                Path.Combine(processDir, NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.DefaultFileName),
+                Path.Combine(baseDir, NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.DefaultFileName),
+                Path.Combine(dbFolder, NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.DefaultFileName)
+            ];
+
+            string? encFilePath = searchPaths.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p));
+
+            if (encFilePath != null &&
+                NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.TryLoadFromFile(encFilePath, out var encToken, out var encChatId))
+            {
+                // Encrypted file takes highest priority (allows instant hot-swapping by simply dropping a new telegram.enc)
+                dbToken = encToken;
+                dbChatId = encChatId;
+
+                // Sync to database
+                settingsService.SetAsync("TelegramBotToken", dbToken).GetAwaiter().GetResult();
+                settingsService.SetAsync("TelegramAdminChatId", dbChatId).GetAwaiter().GetResult();
+                Log.Information("Applied Telegram bot credentials from encrypted config file: {Path}", encFilePath);
+            }
+            else
+            {
+                // Fallback to database or hardcoded defaults
+                if (string.IsNullOrWhiteSpace(dbToken))
+                {
+                    dbToken = defaultBotToken;
+                    settingsService.SetAsync("TelegramBotToken", dbToken).GetAwaiter().GetResult();
+                }
+
+                if (string.IsNullOrWhiteSpace(dbChatId))
+                {
+                    dbChatId = defaultAdminChatId;
+                    settingsService.SetAsync("TelegramAdminChatId", dbChatId).GetAwaiter().GetResult();
+                }
+            }
+
+            telegramService.BotToken = dbToken;
+            telegramService.AdminChatId = dbChatId;
         }
         catch
         {
@@ -218,6 +263,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<Services.IWindowsServiceManager, Services.WindowsServiceManager>();
         services.AddSingleton<Services.ISqlConnectionService, Services.SqlConnectionService>();
         services.AddSingleton<Services.IIisService, Services.IisService>();
+        services.AddSingleton<Services.IProcessMonitorService, Services.ProcessMonitorService>();
+        services.AddSingleton<Services.IProcessControlService, Services.ProcessControlService>();
         services.AddSingleton<Services.ILogCollectionService, Services.LogCollectionService>();
         services.AddSingleton<Services.IScreenshotService, Services.ScreenshotService>();
         services.AddSingleton<Services.ISettingsService, Services.SettingsService>();
@@ -234,6 +281,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<WindowsServicesViewModel>();
         services.AddTransient<SqlTesterViewModel>();
         services.AddSingleton<IisMonitorViewModel>();
+        services.AddSingleton<ProcessManagerViewModel>();
         services.AddSingleton<LogCollectorViewModel>();
         services.AddSingleton<ScreenshotViewModel>();
         services.AddSingleton<OperationHistoryViewModel>();
@@ -252,6 +300,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<WindowsServicesPage>();
         services.AddTransient<SqlTesterPage>();
         services.AddTransient<IisMonitorPage>();
+        services.AddTransient<ProcessManagerPage>();
         services.AddTransient<LogCollectorPage>();
         services.AddTransient<ScreenshotPage>();
         services.AddTransient<OperationHistoryPage>();

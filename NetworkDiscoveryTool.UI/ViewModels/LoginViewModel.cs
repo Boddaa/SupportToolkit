@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NetworkDiscoveryTool.UI.Services;
@@ -8,6 +10,7 @@ public sealed partial class LoginViewModel : ObservableObject
 {
     private readonly AuthService _auth;
     private readonly CurrentUserService _currentUser;
+    private readonly ISettingsService _settings;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -51,18 +54,177 @@ public sealed partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private bool _showPassword;
 
+    // === Remembered Workstation Profile Properties ===
+    [ObservableProperty]
+    private bool _hasRememberedProfile;
+
+    [ObservableProperty]
+    private bool _showManualLogin;
+
+    [ObservableProperty]
+    private string _rememberedUsername = string.Empty;
+
+    [ObservableProperty]
+    private string _rememberedRole = string.Empty;
+
+    [ObservableProperty]
+    private string _rememberedWorkstation = string.Empty;
+
+    [ObservableProperty]
+    private string _rememberedAvatarLetter = "U";
+
+    [ObservableProperty]
+    private string _rememberedLastActive = string.Empty;
+
     public Action? OnLoginSuccess { get; set; }
 
-    public LoginViewModel(AuthService auth, CurrentUserService currentUser)
+    public LoginViewModel(AuthService auth, CurrentUserService currentUser, ISettingsService settings)
     {
         _auth = auth;
         _currentUser = currentUser;
+        _settings = settings;
+
+        _ = LoadRememberedProfileAsync();
     }
 
     [ObservableProperty] private bool _isWaitingForApproval;
     [ObservableProperty] private string _pendingUsername = string.Empty;
     private string _pendingPassword = string.Empty;
     private System.Windows.Threading.DispatcherTimer? _pollTimer;
+
+    public async Task LoadRememberedProfileAsync()
+    {
+        try
+        {
+            var isActive = await _settings.GetAsync("Remembered_IsActive");
+            if (isActive == "true")
+            {
+                var username = await _settings.GetAsync("Remembered_Username");
+                var role = await _settings.GetAsync("Remembered_Role") ?? "User";
+                var workstation = await _settings.GetAsync("Remembered_Workstation") ?? Environment.MachineName;
+                var lastActive = await _settings.GetAsync("Remembered_LastActive");
+
+                if (!string.IsNullOrWhiteSpace(username))
+                {
+                    if (_auth.ValidateRememberedUser(username, out var user, out _))
+                    {
+                        RememberedUsername = user!.Username;
+                        RememberedRole = user.Role;
+                        RememberedWorkstation = workstation;
+                        RememberedAvatarLetter = string.IsNullOrWhiteSpace(user.Username)
+                            ? "U"
+                            : user.Username[0].ToString().ToUpperInvariant();
+
+                        if (DateTime.TryParse(lastActive, out var dt))
+                        {
+                            RememberedLastActive = $"Previous session: {dt:MMM dd, yyyy h:mm tt}";
+                        }
+                        else
+                        {
+                            RememberedLastActive = "Workstation Profile Saved";
+                        }
+
+                        HasRememberedProfile = true;
+                        ShowManualLogin = false;
+                        RememberMe = true;
+                        Username = username;
+                        return;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to load remembered profile.");
+        }
+
+        HasRememberedProfile = false;
+        ShowManualLogin = true;
+    }
+
+    [RelayCommand]
+    private async Task QuickLoginAsync()
+    {
+        HasError = false;
+        IsLoading = true;
+
+        try
+        {
+            await Task.Delay(250);
+
+            if (!_auth.ValidateRememberedUser(RememberedUsername, out var user, out var authError))
+            {
+                ErrorMessage = authError ?? "Workstation verification failed. Please enter credentials.";
+                HasError = true;
+                ShowManualLogin = true;
+                return;
+            }
+
+            _currentUser.SetUser(user!.Id, user.Username, user.Role);
+
+            // Update last active timestamp
+            try
+            {
+                await _settings.SetAsync("Remembered_LastActive", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            }
+            catch { }
+
+            // Ensure last theme is applied
+            try
+            {
+                var theme = await _settings.GetAsync("Theme");
+                if (!string.IsNullOrEmpty(theme))
+                {
+                    SettingsViewModel.ApplyTheme(theme);
+                }
+            }
+            catch { }
+
+            OnLoginSuccess?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Unlock error: {ex.Message}";
+            HasError = true;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private void SwitchAccount()
+    {
+        ShowManualLogin = true;
+        ShowRegister = false;
+        Password = string.Empty;
+        HasError = false;
+        ErrorMessage = string.Empty;
+    }
+
+    [RelayCommand]
+    private void BackToProfile()
+    {
+        if (HasRememberedProfile)
+        {
+            ShowManualLogin = false;
+            ShowRegister = false;
+            HasError = false;
+            ErrorMessage = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ForgetWorkstationAsync()
+    {
+        await ClearSavedCredentialsAsync();
+        HasRememberedProfile = false;
+        ShowManualLogin = true;
+        RememberMe = false;
+        Username = string.Empty;
+        Password = string.Empty;
+    }
 
     [RelayCommand]
     private async Task Login()
@@ -86,7 +248,7 @@ public sealed partial class LoginViewModel : ObservableObject
                 return;
             }
 
-            await Task.Delay(400);
+            await Task.Delay(350);
 
             if (!_auth.ValidateUser(Username, Password, out var user, out var authError))
             {
@@ -105,7 +267,24 @@ public sealed partial class LoginViewModel : ObservableObject
             _currentUser.SetUser(user!.Id, user.Username, user.Role);
 
             if (RememberMe)
-                SaveCredentials();
+            {
+                await SaveCredentialsAsync(user);
+            }
+            else
+            {
+                await ClearSavedCredentialsAsync();
+            }
+
+            // Ensure last theme is applied
+            try
+            {
+                var theme = await _settings.GetAsync("Theme");
+                if (!string.IsNullOrEmpty(theme))
+                {
+                    SettingsViewModel.ApplyTheme(theme);
+                }
+            }
+            catch { }
 
             OnLoginSuccess?.Invoke();
         }
@@ -225,7 +404,35 @@ public sealed partial class LoginViewModel : ObservableObject
         _pollTimer = null;
     }
 
-    private void SaveCredentials()
+    private async Task SaveCredentialsAsync(AuthService.AppUser user)
     {
+        try
+        {
+            await _settings.SetAsync("Remembered_IsActive", "true");
+            await _settings.SetAsync("Remembered_Username", user.Username);
+            await _settings.SetAsync("Remembered_UserId", user.Id.ToString());
+            await _settings.SetAsync("Remembered_Role", user.Role);
+            await _settings.SetAsync("Remembered_Workstation", Environment.MachineName);
+            await _settings.SetAsync("Remembered_LastActive", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to save remembered workstation credentials.");
+        }
+    }
+
+    private async Task ClearSavedCredentialsAsync()
+    {
+        try
+        {
+            await _settings.SetAsync("Remembered_IsActive", "false");
+            await _settings.SetAsync("Remembered_Username", string.Empty);
+            await _settings.SetAsync("Remembered_UserId", string.Empty);
+            await _settings.SetAsync("Remembered_Role", string.Empty);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to clear remembered workstation credentials.");
+        }
     }
 }

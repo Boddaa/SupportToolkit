@@ -15,6 +15,7 @@ using NetworkDiscoveryTool.UI.Views.Login;
 using NetworkDiscoveryTool.UI.Views.OperationHistory;
 using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
+using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.Scan;
 using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
@@ -29,18 +30,21 @@ public partial class MainWindow : Window
     private readonly INavigationService _navigation;
     private readonly DashboardViewModel _dashboardVm;
     private readonly CurrentUserService _currentUser;
+    private readonly ISettingsService _settings;
     private bool _isSidebarCollapsed;
 
     public MainWindow(
         INavigationService navigation,
         DashboardViewModel dashboardVm,
-        CurrentUserService currentUser)
+        CurrentUserService currentUser,
+        ISettingsService settings)
     {
         InitializeComponent();
 
         _navigation = navigation;
         _dashboardVm = dashboardVm;
         _currentUser = currentUser;
+        _settings = settings;
 
         DataContext = dashboardVm;
         navigation.SetFrame(MainFrame);
@@ -60,7 +64,7 @@ public partial class MainWindow : Window
             source?.AddHook(WndProc);
         };
 
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             var workArea = SystemParameters.WorkArea;
             // Adapt window size dynamically to the user's monitor work area
@@ -85,6 +89,9 @@ public partial class MainWindow : Window
                     ToggleSidebar(this, new RoutedEventArgs());
                 }
             }
+
+            // Restore user's previous session state (active page, sidebar, etc.)
+            await RestoreLastStateAsync();
         };
     }
 
@@ -146,30 +153,115 @@ public partial class MainWindow : Window
         BtnSystemInfo.Style = defaultStyle;
         BtnWindowsServices.Style = defaultStyle;
         BtnIisMonitor.Style = defaultStyle;
+        BtnProcessManager.Style = defaultStyle;
         BtnLogCollector.Style = defaultStyle;
         BtnSettings.Style = defaultStyle;
 
         var content = e.Content;
+        string? pageName = null;
+
         if (content is DashboardPage)
+        {
             BtnDashboard.Style = activeStyle;
+            pageName = "Dashboard";
+        }
         else if (content is ScanPage)
+        {
             BtnNetworkDiscovery.Style = activeStyle;
+            pageName = "NetworkDiscovery";
+        }
         else if (content is NetworkDiscoveryTool.UI.Views.Topology.TopologyPage)
+        {
             BtnLiveTopology.Style = activeStyle;
+            pageName = "LiveTopology";
+        }
         else if (content is PortCheckerPage)
+        {
             BtnPortChecker.Style = activeStyle;
+            pageName = "PortChecker";
+        }
         else if (content is PingToolPage)
+        {
             BtnPingTool.Style = activeStyle;
+            pageName = "PingTool";
+        }
         else if (content is SystemInfoPage || content is DeviceDetailsPage)
+        {
             BtnSystemInfo.Style = activeStyle;
+            pageName = "SystemInfo";
+        }
         else if (content is WindowsServicesPage)
+        {
             BtnWindowsServices.Style = activeStyle;
+            pageName = "WindowsServices";
+        }
+        else if (content is SqlTesterPage)
+        {
+            pageName = "SqlTester";
+        }
         else if (content is IisMonitorPage)
+        {
             BtnIisMonitor.Style = activeStyle;
+            pageName = "IisMonitor";
+        }
+        else if (content is ProcessManagerPage)
+        {
+            BtnProcessManager.Style = activeStyle;
+            pageName = "ProcessManager";
+        }
         else if (content is LogCollectorPage)
+        {
             BtnLogCollector.Style = activeStyle;
+            pageName = "LogCollector";
+        }
+        else if (content is ScreenshotPage)
+        {
+            pageName = "Screenshot";
+        }
+        else if (content is OperationHistoryPage)
+        {
+            pageName = "OperationHistory";
+        }
         else if (content is SettingsPage)
+        {
             BtnSettings.Style = activeStyle;
+            pageName = "Settings";
+        }
+
+        if (pageName != null)
+        {
+            _ = _settings.SetAsync("LastActivePage", pageName);
+        }
+    }
+
+    public void RestoreSession()
+    {
+        UpdateUserDisplay(_currentUser.Username, _currentUser.Role);
+        _ = RestoreLastStateAsync();
+    }
+
+    private async Task RestoreLastStateAsync()
+    {
+        try
+        {
+            // 1. Restore Sidebar State
+            var sidebarStr = await _settings.GetAsync("SidebarCollapsed");
+            if (bool.TryParse(sidebarStr, out var wasCollapsed) && wasCollapsed != _isSidebarCollapsed)
+            {
+                ToggleSidebar(this, new RoutedEventArgs());
+            }
+
+            // 2. Restore Last Active Page
+            var lastPage = await _settings.GetAsync("LastActivePage");
+            if (!string.IsNullOrWhiteSpace(lastPage) && lastPage != "Dashboard")
+            {
+                _navigation.NavigateTo(lastPage);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Failed to restore last application state.");
+        }
     }
 
     public void UpdateUserDisplay(string username, string role)
@@ -188,6 +280,7 @@ public partial class MainWindow : Window
     private void NavigateToWindowsServices(object sender, RoutedEventArgs e) => _navigation.NavigateToWindowsServices();
     private void NavigateToSqlTester(object sender, RoutedEventArgs e) => _navigation.NavigateToSqlTester();
     private void NavigateToIisMonitor(object sender, RoutedEventArgs e) => _navigation.NavigateToIisMonitor();
+    private void NavigateToProcessManager(object sender, RoutedEventArgs e) => _navigation.NavigateToProcessManager();
     private void NavigateToLogCollector(object sender, RoutedEventArgs e) => _navigation.NavigateToLogCollector();
     private void NavigateToScreenshot(object sender, RoutedEventArgs e) => _navigation.NavigateToScreenshot();
     private void NavigateToOperationHistory(object sender, RoutedEventArgs e) => _navigation.NavigateToOperationHistory();
@@ -206,6 +299,7 @@ public partial class MainWindow : Window
     private void ToggleSidebar(object sender, RoutedEventArgs e)
     {
         _isSidebarCollapsed = !_isSidebarCollapsed;
+        _ = _settings.SetAsync("SidebarCollapsed", _isSidebarCollapsed.ToString());
         double targetWidth = _isSidebarCollapsed ? 64 : 230;
 
         try
@@ -215,7 +309,7 @@ public partial class MainWindow : Window
 
             var labels = new[] {
                 NavLabel, LblDashboard, LblNetworkDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
-                LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor,
+                LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor, LblProcessManager,
                 LblLogCollector, LblScreenshot, LblSettings, LblLogout
             };
             foreach (var lbl in labels)
@@ -245,6 +339,7 @@ public partial class MainWindow : Window
             (BtnWindowsServices, "Services"),
             (BtnSqlTester, "SQL Tester"),
             (BtnIisMonitor, "IIS Monitor"),
+            (BtnProcessManager, "Process Manager"),
             (BtnLogCollector, "Log Collector"),
             (BtnScreenshot, "Screenshot"),
             (BtnSettings, "Settings"),

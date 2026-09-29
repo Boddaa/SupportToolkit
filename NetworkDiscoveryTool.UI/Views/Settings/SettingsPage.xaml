@@ -322,16 +322,30 @@
                                             <TextBlock Text="&#xE715;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                                             <TextBlock Text="Telegram Admin Instant Alert Integration" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <Button Grid.Column="1" Command="{Binding TestTelegramBotCommand}"
-                                                Height="26" Padding="12,0"
-                                                Background="{DynamicResource AccentBrush}" Foreground="White"
-                                                FontSize="11" FontWeight="SemiBold" Cursor="Hand"
-                                                BorderThickness="0" md:ButtonAssist.CornerRadius="5">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Send Test Alert" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <!-- Export Encrypted telegram.enc -->
+                                            <Button Command="{Binding ExportEncryptedTelegramConfigCommand}"
+                                                    Height="26" Padding="10,0" Margin="0,0,8,0"
+                                                    Style="{StaticResource BtnSecondary}"
+                                                    FontSize="11" FontWeight="SemiBold" Cursor="Hand"
+                                                    ToolTip="Export an encrypted 'telegram.enc' file for distribution or hot-swapping">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xEDE1;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Export telegram.enc" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+
+                                            <Button Command="{Binding TestTelegramBotCommand}"
+                                                    Height="26" Padding="12,0"
+                                                    Background="{DynamicResource AccentBrush}" Foreground="White"
+                                                    FontSize="11" FontWeight="SemiBold" Cursor="Hand"
+                                                    BorderThickness="0" md:ButtonAssist.CornerRadius="5">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Send Test Alert" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
                                     </Grid>
                                     <Grid>
                                         <Grid.ColumnDefinitions>

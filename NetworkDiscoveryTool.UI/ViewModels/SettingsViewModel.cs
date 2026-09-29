@@ -96,8 +96,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool _notifyOnScanError = true;
     [ObservableProperty] private bool _notifyOnServiceChange = true;
     [ObservableProperty] private bool _notifyOnNewUserRegistration = true;
-    [ObservableProperty] private string _telegramBotToken = "";
-    [ObservableProperty] private string _telegramAdminChatId = "";
+    [ObservableProperty] private string _telegramBotToken = "8914418594:AAGMMqY91qu0MnkEM453gjclAm_RyOyGxfc";
+    [ObservableProperty] private string _telegramAdminChatId = "1119565273";
 
     // === Default Save Folder ===
     [ObservableProperty] private string _defaultSaveFolder = "";
@@ -165,8 +165,12 @@ public sealed partial class SettingsViewModel : ObservableObject
             if (all.TryGetValue("NotifyScanError", out var nse)) NotifyOnScanError = nse == "True";
             if (all.TryGetValue("NotifyServiceChange", out var nsv)) NotifyOnServiceChange = nsv == "True";
             if (all.TryGetValue("NotifyNewUser", out var nnu)) NotifyOnNewUserRegistration = nnu == "True";
-            TelegramBotToken = all.TryGetValue("TelegramBotToken", out var tbt) ? tbt : string.Empty;
-            TelegramAdminChatId = all.TryGetValue("TelegramAdminChatId", out var tcid) ? tcid : string.Empty;
+            TelegramBotToken = all.TryGetValue("TelegramBotToken", out var tbt) && !string.IsNullOrWhiteSpace(tbt)
+                ? tbt
+                : "8914418594:AAGMMqY91qu0MnkEM453gjclAm_RyOyGxfc";
+            TelegramAdminChatId = all.TryGetValue("TelegramAdminChatId", out var tcid) && !string.IsNullOrWhiteSpace(tcid)
+                ? tcid
+                : "1119565273";
 
             _telegramService.BotToken = TelegramBotToken;
             _telegramService.AdminChatId = TelegramAdminChatId;
@@ -253,6 +257,45 @@ public sealed partial class SettingsViewModel : ObservableObject
         else
         {
             StatusMessage = "✗ Failed to send alert. Please verify your Bot Token and Chat ID.";
+        }
+    }
+
+    [RelayCommand]
+    private void ExportEncryptedTelegramConfig()
+    {
+        if (string.IsNullOrWhiteSpace(TelegramBotToken) || string.IsNullOrWhiteSpace(TelegramAdminChatId))
+        {
+            StatusMessage = "Please enter Telegram Bot Token and Admin Chat ID first.";
+            return;
+        }
+
+        try
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.DefaultFileName,
+                Filter = "Encrypted Config (*.enc)|*.enc|All Files (*.*)|*.*",
+                Title = "Export Encrypted Telegram Config"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                NetworkDiscoveryTool.Services.Services.TelegramConfigCrypto.SaveToFile(
+                    dialog.FileName,
+                    TelegramBotToken,
+                    TelegramAdminChatId);
+
+                StatusMessage = $"✓ Encrypted config exported to: {System.IO.Path.GetFileName(dialog.FileName)}";
+                System.Windows.MessageBox.Show(
+                    $"Encrypted file '{System.IO.Path.GetFileName(dialog.FileName)}' generated successfully!\n\nYou can copy this file next to SupportToolKit.exe on any client machine to apply these credentials automatically.",
+                    "Config Exported",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"✗ Export failed: {ex.Message}";
         }
     }
 

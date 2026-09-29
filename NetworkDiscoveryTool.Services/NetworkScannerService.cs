@@ -42,10 +42,15 @@ public sealed class NetworkScannerService : INetworkScanner
 
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly ILogger<NetworkScannerService> _logger;
+    private readonly IDeviceClassifier _classifier;
 
-    public NetworkScannerService(IDbContextFactory<AppDbContext> contextFactory, ILogger<NetworkScannerService>? logger = null)
+    public NetworkScannerService(
+        IDbContextFactory<AppDbContext> contextFactory,
+        IDeviceClassifier? classifier = null,
+        ILogger<NetworkScannerService>? logger = null)
     {
         _contextFactory = contextFactory;
+        _classifier = classifier ?? new DeviceClassifier();
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<NetworkScannerService>.Instance;
     }
 
@@ -222,7 +227,7 @@ public sealed class NetworkScannerService : INetworkScanner
         _logger.LogInformation("Scan saved to database: ID={ScanId}, Devices={Count}", scan.Id, devices.Count);
     }
 
-    private static async Task<Device?> ScanDeviceAsync(string ip, int pingTimeoutMs, int portTimeoutMs, CancellationToken ct)
+    private async Task<Device?> ScanDeviceAsync(string ip, int pingTimeoutMs, int portTimeoutMs, CancellationToken ct)
     {
         if (ct.IsCancellationRequested) return null;
 
@@ -273,7 +278,7 @@ public sealed class NetworkScannerService : INetworkScanner
         }
 
         var vendor = OuiLookup.Lookup(mac, hostname, openPorts);
-        var deviceType = ClassifyDevice(ports, vendor, hostname, httpBanner, ip);
+        var deviceType = _classifier.Classify(ports, vendor, hostname, httpBanner, ip);
 
         return new Device
         {
@@ -299,106 +304,46 @@ public sealed class NetworkScannerService : INetworkScanner
 
     private static async Task<List<Port>> ScanPortsAsync(string ip, int timeoutMs, CancellationToken ct)
     {
-        var ports = new List<Port>();
-
-        foreach (var port in CommonPorts)
+        var scanTasks = CommonPorts.Select(async port =>
         {
-            if (ct.IsCancellationRequested) break;
+            if (ct.IsCancellationRequested)
+            {
+                return new Port
+                {
+                    PortNumber = port,
+                    State = "Closed",
+                    Service = ServiceMap.GetValueOrDefault(port),
+                };
+            }
 
             try
             {
                 using var client = new TcpClient();
-                var connectTask = client.ConnectAsync(ip, port);
-                bool open = await Task.WhenAny(connectTask, Task.Delay(timeoutMs, ct)) == connectTask && client.Connected;
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(timeoutMs);
 
-                ports.Add(new Port
+                await client.ConnectAsync(ip, port, cts.Token);
+                bool open = client.Connected;
+
+                return new Port
                 {
                     PortNumber = port,
                     State = open ? "Open" : "Closed",
                     Service = ServiceMap.GetValueOrDefault(port),
-                });
+                };
             }
             catch
             {
-                ports.Add(new Port { PortNumber = port, State = "Closed", Service = ServiceMap.GetValueOrDefault(port) });
+                return new Port
+                {
+                    PortNumber = port,
+                    State = "Closed",
+                    Service = ServiceMap.GetValueOrDefault(port),
+                };
             }
-        }
+        });
 
-        return ports;
-    }
-
-    private static string ClassifyDevice(List<Port> ports, string vendor, string hostname, string? httpBanner, string ip)
-    {
-        var open = ports.Where(p => p.State == "Open").Select(p => p.PortNumber).ToHashSet();
-        var vLower = vendor.ToLowerInvariant();
-        var hLower = hostname.ToLowerInvariant();
-        var bLower = (httpBanner ?? "").ToLowerInvariant();
-
-        // 1. IP Cameras / CCTV (Strict matching on RTSP, Camera Banners, or Camera Vendors)
-        if (open.Contains(554) || open.Contains(8554) || open.Contains(37777) ||
-            bLower.Contains("network camera") || bLower.Contains("camera") || bLower.Contains("thttpd") ||
-            bLower.Contains("wv-") || hLower.Contains("cam") || hLower.Contains("cctv") ||
-            vLower.Contains("camera") || vLower.Contains("axis") || vLower.Contains("hikvision") ||
-            vLower.Contains("dahua") || vLower.Contains("uniview") || vLower.Contains("vivotek"))
-        {
-            return "IP Camera";
-        }
-
-        // 2. Printers & Multifunction Devices
-        if (open.Contains(9100) || open.Contains(515) || open.Contains(631) ||
-            bLower.Contains("xerox") || bLower.Contains("workcentre") || bLower.Contains("laserjet") ||
-            bLower.Contains("pagewide") || bLower.Contains("colorqube") || hLower.Contains("xrx") ||
-            hLower.Contains("print") || vLower.Contains("xerox") || vLower.Contains("canon") ||
-            vLower.Contains("epson") || vLower.Contains("brother") || vLower.Contains("kyocera") ||
-            vLower.Contains("ricoh") || vLower.Contains("lexmark") || vLower.Contains("konica"))
-        {
-            return "Printer";
-        }
-
-        // 3. Network Infrastructure (Routers, Switches, Firewalls, Access Points)
-        if (bLower.Contains("huawei switch") || bLower.Contains("switch admin") ||
-            bLower.Contains("tp-link") || bLower.Contains("d-link") || bLower.Contains("busybox") ||
-            bLower.Contains("openwrt") || bLower.Contains("router") ||
-            vLower.Contains("cisco") || vLower.Contains("huawei") || vLower.Contains("tp-link") ||
-            vLower.Contains("d-link") || vLower.Contains("mikrotik") || vLower.Contains("ubiquiti") ||
-            vLower.Contains("juniper") || vLower.Contains("aruba") || vLower.Contains("fortinet") ||
-            vLower.Contains("tenda") || vLower.Contains("zyxel") ||
-            (ip.EndsWith(".1") || ip.EndsWith(".254")) && (open.Contains(80) || open.Contains(443) || open.Contains(22)))
-        {
-            return "Router / Switch";
-        }
-
-        // 4. Access Control, Biometrics & BMS
-        if (vLower.Contains("suprema") || hLower.Contains("biostar"))
-            return "Access Control";
-        if (vLower.Contains("alerton") || bLower.Contains("gsoap"))
-            return "BMS Controller";
-
-        // 5. Servers, Databases, Hypervisors, High-Performance Clusters
-        if (hLower.Contains("cluster") || hLower.Contains("maincluster") || hLower.Contains("get-up") ||
-            hLower.Contains("server") || hLower.Contains("srv") || hLower.Contains("active") ||
-            hLower.Contains("exchange") || hLower.Contains("esxi") || hLower.Contains("vmware") || hLower.Contains("proxmox") ||
-            vLower.Contains("vmware") || vLower.Contains("hyper-v") || vLower.Contains("supermicro") ||
-            open.Contains(1433) || open.Contains(1521) || open.Contains(3306) || open.Contains(5432) || open.Contains(8006))
-        {
-            return "Server";
-        }
-
-        // 6. Windows PC / Workstation
-        if (hLower.StartsWith("desktop-") || hLower.StartsWith("laptop-") || hLower.StartsWith("win-") ||
-            hLower.Contains("-pc") || hLower == "khaled" ||
-            hLower == "mo" || hLower == "hussein-khalil" || hLower == "b0dda-pc" || hLower == "msi" ||
-            hLower.Contains("workstation") || hLower.Contains("admin") ||
-            open.Contains(135) || open.Contains(139) || open.Contains(445) || open.Contains(3389) ||
-            vLower.Contains("dell") || vLower.Contains("hewlett packard") || vLower.Contains("lenovo") ||
-            vLower.Contains("giga-byte") || vLower.Contains("micro-star") || vLower.Contains("asus") ||
-            vLower.Contains("acer") || vLower.Contains("realtek") || vLower.Contains("intel") ||
-            vLower.Contains("seavo") || vLower.Contains("compal") || vLower.Contains("wistron") ||
-            vLower.Contains("apple"))
-        {
-            return "Workstation";
-        }
-
-        return "Generic Device";
+        var results = await Task.WhenAll(scanTasks);
+        return results.OrderBy(p => p.PortNumber).ToList();
     }
 }

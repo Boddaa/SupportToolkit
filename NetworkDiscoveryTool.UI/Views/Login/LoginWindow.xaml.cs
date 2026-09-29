@@ -25,7 +25,7 @@ public partial class LoginWindow : Window
 
                 if (Owner is MainWindow existingMain)
                 {
-                    existingMain.UpdateUserDisplay(currentUser.Username, currentUser.Role);
+                    existingMain.RestoreSession();
                     existingMain.Show();
                     DialogResult = true;
                 }
@@ -53,7 +53,7 @@ public partial class LoginWindow : Window
         Loaded += OnLoaded;
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         var fadeIn = (Storyboard)FindResource("CardFadeIn");
         fadeIn.Begin();
@@ -68,6 +68,8 @@ public partial class LoginWindow : Window
         var float3 = (Storyboard)FindResource("FloatBlob3");
         float3.Begin();
 
+        await _vm.LoadRememberedProfileAsync();
+
         _vm.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(LoginViewModel.HasError) && _vm.HasError)
@@ -81,7 +83,13 @@ public partial class LoginWindow : Window
             }
         };
 
-        Dispatcher.BeginInvoke(new Action(() => UsernameBox.Focus()), System.Windows.Threading.DispatcherPriority.Input);
+        await Dispatcher.InvokeAsync(() =>
+        {
+            if (!_vm.HasRememberedProfile || _vm.ShowManualLogin)
+            {
+                UsernameBox.Focus();
+            }
+        }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
     private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)

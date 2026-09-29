@@ -309,6 +309,14 @@
                                         <DataTrigger Binding="{Binding ShowRegister}" Value="True">
                                             <Setter Property="Text" Value="Create Administrator Profile"/>
                                         </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasRememberedProfile}" Value="True"/>
+                                                <Condition Binding="{Binding ShowManualLogin}" Value="False"/>
+                                                <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Text" Value="Welcome Back"/>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
@@ -322,6 +330,14 @@
                                         <DataTrigger Binding="{Binding ShowRegister}" Value="True">
                                             <Setter Property="Text" Value="Set up your local credentials to manage network discovery assets."/>
                                         </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasRememberedProfile}" Value="True"/>
+                                                <Condition Binding="{Binding ShowManualLogin}" Value="False"/>
+                                                <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Text" Value="Saved profile detected. Click to restore your previous session."/>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
@@ -383,19 +399,187 @@
                     <Grid Grid.Row="1">
 
                         <!-- ==================================================== -->
+                        <!-- 0. REMEMBERED WORKSTATION PROFILE VIEW               -->
+                        <!-- ==================================================== -->
+                        <StackPanel>
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding HasRememberedProfile}" Value="True"/>
+                                                <Condition Binding="{Binding ShowManualLogin}" Value="False"/>
+                                                <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Workstation Host Pill -->
+                            <Border HorizontalAlignment="Left" Background="#120EA5E9" BorderBrush="#300EA5E9" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="#38BDF8" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBlock Text="WORKSTATION: " FontSize="10" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RememberedWorkstation}" FontSize="10" FontWeight="SemiBold" Foreground="#F8FAFC" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Clickable Interactive Profile Card -->
+                            <Border Cursor="Hand" Background="#0B162C" BorderBrush="#2538BDF8" BorderThickness="1" CornerRadius="12" Padding="16,14" Margin="0,0,0,16">
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick" Command="{Binding QuickLoginCommand}"/>
+                                </Border.InputBindings>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="BorderBrush" Value="#0EA5E9"/>
+                                                <Setter Property="Background" Value="#0F1E3A"/>
+                                                <Setter Property="Effect">
+                                                    <Setter.Value>
+                                                        <DropShadowEffect BlurRadius="16" Color="#0EA5E9" Opacity="0.35" ShadowDepth="0"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Avatar with online badge -->
+                                    <Grid Grid.Column="0" Margin="0,0,14,0" VerticalAlignment="Center">
+                                        <Border Width="52" Height="52" CornerRadius="26" BorderBrush="#0EA5E9" BorderThickness="2">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                    <GradientStop Color="#0284C7" Offset="0"/>
+                                                    <GradientStop Color="#0EA5E9" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <TextBlock Text="{Binding RememberedAvatarLetter}" FontSize="22" FontWeight="Bold" Foreground="White"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <Border Width="12" Height="12" CornerRadius="6" Background="#10B981" BorderBrush="#0B162C" BorderThickness="2"
+                                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-1,-1">
+                                            <Border.Effect>
+                                                <DropShadowEffect BlurRadius="6" Color="#10B981" Opacity="0.8" ShadowDepth="0"/>
+                                            </Border.Effect>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- User Details -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding RememberedUsername}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,8,0"/>
+                                            <Border Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding RememberedRole}" FontSize="9" FontWeight="Bold" Foreground="#38BDF8"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <TextBlock Text="&#xEC92;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <TextBlock Text="{Binding RememberedLastActive}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Arrow Icon -->
+                                    <Border Grid.Column="2" Width="32" Height="32" CornerRadius="8" Background="#150EA5E9" BorderBrush="#300EA5E9" BorderThickness="1" VerticalAlignment="Center">
+                                        <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#38BDF8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- Primary Action Button -->
+                            <Button Command="{Binding QuickLoginCommand}"
+                                    Height="44" Margin="0,0,0,14"
+                                    IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanNotConverter}}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource CyberPrimaryBtn}">
+                                        <Setter Property="IsDefault" Value="False"/>
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding HasRememberedProfile}" Value="True"/>
+                                                    <Condition Binding="{Binding ShowManualLogin}" Value="False"/>
+                                                    <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="IsDefault" Value="True"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Unlock &amp; Restore Session" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+
+                            <!-- Secondary Options -->
+                            <Grid Margin="0,2,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0" Command="{Binding SwitchAccountCommand}" Style="{StaticResource BtnGhost}" Height="34" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE748;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Switch Account" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Grid.Column="1" Command="{Binding ForgetWorkstationCommand}" Style="{StaticResource BtnGhost}" Height="34" HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Forget Workstation" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- ==================================================== -->
                         <!-- 1. SIGN IN FORM VIEW                                 -->
                         <!-- ==================================================== -->
                         <StackPanel>
                             <StackPanel.Style>
                                 <Style TargetType="StackPanel">
-                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ShowRegister}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed"/>
-                                        </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                                <Condition Binding="{Binding HasRememberedProfile}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                                <Condition Binding="{Binding ShowManualLogin}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </StackPanel.Style>
+
+                            <!-- Return to Saved Profile link (visible when switching accounts from remembered profile) -->
+                            <Button Command="{Binding BackToProfileCommand}" Style="{StaticResource BtnGhost}"
+                                    Height="28" Padding="6,2" Margin="0,0,0,10" HorizontalAlignment="Left"
+                                    Visibility="{Binding HasRememberedProfile, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Return to saved profile" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
 
                             <!-- Username Input -->
                             <StackPanel Margin="0,0,0,16">
@@ -448,26 +632,46 @@
                             </StackPanel>
 
                             <!-- Remember Me Checkbox -->
-                            <Grid Margin="0,2,0,18">
+                            <Grid Margin="0,2,0,18" Cursor="Hand" MouseDown="RememberMe_MouseDown">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Border Width="18" Height="18" CornerRadius="5" Background="{DynamicResource InputBgBrush}"
-                                        BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" Cursor="Hand"
-                                        MouseDown="RememberMe_MouseDown">
+                                        BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1">
                                     <TextBlock x:Name="CheckMark" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
                                                FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Visibility="{Binding RememberMe, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 </Border>
                                 <TextBlock Grid.Column="1" Text="Remember this workstation" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
-                                           Margin="8,0,0,0" VerticalAlignment="Center" Cursor="Hand" MouseDown="RememberMe_MouseDown"/>
+                                           Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </Grid>
 
-                            <!-- Sign In Primary Button (IsDefault=True executes on Enter key) -->
-                            <Button Command="{Binding LoginCommand}" Style="{StaticResource CyberPrimaryBtn}"
-                                    IsDefault="True"
+                            <!-- Sign In Primary Button -->
+                            <Button Command="{Binding LoginCommand}"
                                     IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanNotConverter}}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource CyberPrimaryBtn}">
+                                        <Setter Property="IsDefault" Value="False"/>
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                                    <Condition Binding="{Binding HasRememberedProfile}" Value="False"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="IsDefault" Value="True"/>
+                                            </MultiDataTrigger>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding ShowRegister}" Value="False"/>
+                                                    <Condition Binding="{Binding ShowManualLogin}" Value="True"/>
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="IsDefault" Value="True"/>
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
                                 <Grid>
                                     <StackPanel x:Name="BtnText" Orientation="Horizontal" VerticalAlignment="Center">
                                         <TextBlock Text="&#xE785;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
@@ -635,7 +839,17 @@
                                         <TextBlock Text="Back" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
-                                <Button Grid.Column="2" Command="{Binding RegisterCommand}" Style="{StaticResource CyberPrimaryBtn}" Height="42">
+                                <Button Grid.Column="2" Command="{Binding RegisterCommand}" Height="42">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource CyberPrimaryBtn}">
+                                            <Setter Property="IsDefault" Value="False"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ShowRegister}" Value="True">
+                                                    <Setter Property="IsDefault" Value="True"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="Create Profile" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>

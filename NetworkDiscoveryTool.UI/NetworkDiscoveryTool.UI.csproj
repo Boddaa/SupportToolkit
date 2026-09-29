@@ -15,6 +15,12 @@
 
   <ItemGroup>
     <Resource Include="Assets\app.ico" />
+    <None Update="telegram.enc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
