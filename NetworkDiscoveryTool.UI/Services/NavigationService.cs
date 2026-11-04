@@ -78,6 +78,10 @@ public class NavigationService : INavigationService
     {
         switch (pageName?.Trim())
         {
+            case "CameraDiscovery":
+            case "CameraRadar":
+                NavigateToCameraDiscovery();
+                break;
             case "NetworkDiscovery":
             case "Scan":
                 NavigateToNetworkDiscovery();

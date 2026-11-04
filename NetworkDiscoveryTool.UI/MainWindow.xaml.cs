@@ -181,9 +181,12 @@ public partial class MainWindow : Window
         else if (content is ScanPage)
         {
             BtnNetworkDiscovery.Style = activeStyle;
-        else if (content is CameraDiscoveryPage)
-            BtnCameraDiscovery.Style = activeStyle;
             pageName = "NetworkDiscovery";
+        }
+        else if (content is CameraDiscoveryPage)
+        {
+            BtnCameraDiscovery.Style = activeStyle;
+            pageName = "CameraDiscovery";
         }
         else if (content is NetworkDiscoveryTool.UI.Views.Topology.TopologyPage)
         {
@@ -320,9 +323,6 @@ public partial class MainWindow : Window
 
             var labels = new[] {
                 NavLabel, LblDashboard, LblNetworkDiscovery, LblCameraDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
-                LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor,
-                LblLogCollector, LblScreenshot, LblSettings, LblLogout
-                NavLabel, LblDashboard, LblNetworkDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
                 LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor, LblProcessManager,
                 LblLogCollector, LblSettings, LblLogout
             };
@@ -357,7 +357,7 @@ public partial class MainWindow : Window
             (BtnSqlTester, "SQL Tester"),
             (BtnIisMonitor, "IIS Monitor"),
             (BtnLogCollector, "Log Collector"),
-            (BtnScreenshot, "Screenshot"),
+            (BtnProcessManager, "Process Manager"),
             (BtnSettings, "Settings"),
         };
         // Ctrl + / or Ctrl + F to focus universal search
