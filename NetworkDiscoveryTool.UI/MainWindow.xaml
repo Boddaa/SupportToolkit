@@ -461,6 +461,14 @@
                                     </StackPanel>
                                 </Button>
 
+                                <!-- 3. Camera Radar -->
+                                <Button x:Name="BtnCameraDiscovery" Style="{StaticResource NetScopeNavBtn}" Click="NavigateToCameraDiscovery">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="LblCameraDiscovery" Text="Camera Radar" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
                                 <!-- 3. Live Topology -->
                                 <Button x:Name="BtnLiveTopology" Style="{StaticResource NetScopeNavBtn}" Click="NavigateToLiveTopology">
                                     <StackPanel Orientation="Horizontal">

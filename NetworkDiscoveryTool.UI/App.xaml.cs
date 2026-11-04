@@ -9,6 +9,7 @@ using NetworkDiscoveryTool.Services;
 using NetworkDiscoveryTool.Services.Services;
 using NetworkDiscoveryTool.UI.Services;
 using NetworkDiscoveryTool.UI.ViewModels;
+using NetworkDiscoveryTool.UI.Views.CameraDiscovery;
 using NetworkDiscoveryTool.UI.Views.Dashboard;
 using NetworkDiscoveryTool.UI.Views.DeviceDetails;
 using NetworkDiscoveryTool.UI.Views.IisMonitor;
@@ -251,6 +252,7 @@ public partial class App : System.Windows.Application
 
         // Core services
         services.AddSingleton<INetworkScanner, NetworkScannerService>();
+        services.AddSingleton<ICameraDiscoveryService, CameraDiscoveryService>();
 
         // App services
         services.AddSingleton<LicenseService>();
@@ -271,6 +273,7 @@ public partial class App : System.Windows.Application
         // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddSingleton<DashboardViewModel>();
+        services.AddSingleton<CameraDiscoveryViewModel>();
         services.AddSingleton<ScanViewModel>();
         services.AddSingleton<TopologyViewModel>();
         services.AddSingleton<PingToolViewModel>();
@@ -289,6 +292,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<LoginWindow>();
         services.AddTransient<DeviceDetailsPage>();
         services.AddTransient<DashboardPage>();
+        services.AddTransient<CameraDiscoveryPage>();
         services.AddTransient<ScanPage>();
         services.AddTransient<NetworkDiscoveryTool.UI.Views.Topology.TopologyPage>();
         services.AddTransient<PingToolPage>();

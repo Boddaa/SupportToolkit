@@ -6,6 +6,7 @@ public interface INavigationService
 {
     void SetFrame(Frame frame);
     void NavigateToDashboard();
+    void NavigateToCameraDiscovery();
     void NavigateToNetworkDiscovery();
     void NavigateToLiveTopology();
     void NavigateToPingTool();
