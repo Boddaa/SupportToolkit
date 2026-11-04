@@ -135,6 +135,14 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
 
         await Task.WhenAll(enrichTasks);
 
+        // Filter out any PCs, Workstations, or Recording Servers
+        results.RemoveAll(cam =>
+            cam.Brand == "PC / Server" ||
+            CameraOuiDatabase.IsPcOrServerText(cam.Model) ||
+            CameraOuiDatabase.IsPcOrServerText(cam.ExtraInfo) ||
+            CameraOuiDatabase.IsPcOrServerText(cam.SubnetMismatchDetails) ||
+            CameraOuiDatabase.IsPcOrServerMac(cam.MACAddress));
+
         statusProgress?.Report($"Discovery finished. Discovered {results.Count} camera(s).");
         return results.OrderBy(c => c.Brand).ThenBy(c => c.IPAddress).ToList();
     }
@@ -237,6 +245,9 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 var xaddrs = match.Element(d + "XAddrs")?.Value ?? string.Empty;
                 var scopes = match.Element(d + "Scopes")?.Value ?? string.Empty;
 
+                if (CameraOuiDatabase.IsPcOrServerText(scopes) || CameraOuiDatabase.IsPcOrServerText(xaddrs))
+                    continue;
+
                 var ip = senderIp;
                 int port = 80;
 
@@ -271,6 +282,8 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 }
 
                 brand = CameraOuiDatabase.DetectBrandFromText($"{model} {scopes}");
+                if (brand == "PC / Server" || CameraOuiDatabase.IsPcOrServerText(model))
+                    continue;
 
                 dict.AddOrUpdate(ip,
                     _ => new DiscoveredCamera
@@ -496,6 +509,9 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     {
         try
         {
+            if (CameraOuiDatabase.IsPcOrServerText(text))
+                return;
+
             var lower = text.ToLowerInvariant();
             if (!lower.Contains("camera") && !lower.Contains("ipro") && !lower.Contains("panasonic") &&
                 !lower.Contains("dahua") && !lower.Contains("axis") && !lower.Contains("onvif") &&
@@ -515,12 +531,18 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
             }
 
             string brand = CameraOuiDatabase.DetectBrandFromText(text);
+            if (brand == "PC / Server")
+                return;
+
             string model = "IP Camera";
 
             var serverMatch = Regex.Match(text, @"Server:\s*(?<srv>[^\r\n]+)", RegexOptions.IgnoreCase);
             if (serverMatch.Success)
             {
                 var srv = serverMatch.Groups["srv"].Value.Trim();
+                if (CameraOuiDatabase.IsPcOrServerText(srv))
+                    return;
+
                 if (srv.Contains("i-PRO", StringComparison.OrdinalIgnoreCase) || srv.Contains("Panasonic", StringComparison.OrdinalIgnoreCase))
                 {
                     brand = "i-PRO";
@@ -531,6 +553,9 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                     model = srv;
                 }
             }
+
+            if (CameraOuiDatabase.IsPcOrServerText(model))
+                return;
 
             dict.AddOrUpdate(ip,
                 _ => new DiscoveredCamera
@@ -694,6 +719,9 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
 
                         if (macStr.Length == 17)
                         {
+                            if (CameraOuiDatabase.IsPcOrServerMac(macStr))
+                                continue;
+
                             var vendor = CameraOuiDatabase.Lookup(macStr);
                             if (vendor != null)
                             {
