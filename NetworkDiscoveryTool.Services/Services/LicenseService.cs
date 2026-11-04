@@ -8,9 +8,6 @@ namespace NetworkDiscoveryTool.Services.Services;
 
 public sealed class LicenseService
 {
-    private static readonly byte[] Key = Encoding.UTF8.GetBytes("SupportToolKitSecKey2026!#$89012"); // 32 bytes AES Key
-    private static readonly byte[] IV = Encoding.UTF8.GetBytes("STKLicenseIV2026!"); // 16 bytes IV
-
     private readonly string _licenseFilePath;
 
     public LicenseService()
@@ -21,22 +18,27 @@ public sealed class LicenseService
         _licenseFilePath = Path.Combine(dir, "license.lic");
     }
 
-    public sealed record LicenseToken(string Username, string HardwareId, DateTime ApprovedDate, bool IsActive);
+    public sealed record LicenseToken(
+        string Username,
+        string HardwareId,
+        DateTime ApprovedDate,
+        bool IsActive,
+        string? PasswordHash = null);
 
-    public void SaveApprovedLicense(string username)
+    public void SaveApprovedLicense(string username, string? passwordHash = null)
     {
         try
         {
             var hardwareId = HardwareIdService.GetHardwareId();
-            var token = new LicenseToken(username, hardwareId, DateTime.UtcNow, true);
+            var token = new LicenseToken(username, hardwareId, DateTime.UtcNow, true, passwordHash);
             var json = JsonSerializer.Serialize(token);
-            var encrypted = EncryptString(json);
+            var encrypted = EncryptData(json);
             File.WriteAllText(_licenseFilePath, encrypted);
         }
         catch { /* Ignore write errors */ }
     }
 
-    public bool IsLicenseValidOffline(string username, out string? reason)
+    public bool IsLicenseValidOffline(string username, string password, out string? reason)
     {
         reason = null;
         if (!File.Exists(_licenseFilePath))
@@ -48,9 +50,14 @@ public sealed class LicenseService
         try
         {
             var encrypted = File.ReadAllText(_licenseFilePath);
-            var json = DecryptString(encrypted);
-            var token = JsonSerializer.Deserialize<LicenseToken>(json);
+            var json = DecryptData(encrypted);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                reason = "License data is unreadable or corrupted.";
+                return false;
+            }
 
+            var token = JsonSerializer.Deserialize<LicenseToken>(json);
             if (token is null || !token.IsActive)
             {
                 reason = "License is invalid or revoked.";
@@ -70,6 +77,16 @@ public sealed class LicenseService
                 return false;
             }
 
+            // Verify password against cached license token hash
+            if (!string.IsNullOrEmpty(token.PasswordHash))
+            {
+                if (!PasswordHasher.VerifyPassword(password, token.PasswordHash, out _))
+                {
+                    reason = "Invalid password for offline credentials.";
+                    return false;
+                }
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -79,34 +96,31 @@ public sealed class LicenseService
         }
     }
 
-    private static string EncryptString(string plainText)
+    public bool IsLicenseValidOffline(string username, out string? reason)
     {
-        using var aes = Aes.Create();
-        aes.Key = Key;
-        aes.IV = IV;
-        var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
-        using var ms = new MemoryStream();
-        using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-        using (var writer = new StreamWriter(cs))
-        {
-            writer.Write(plainText);
-        }
-
-        return Convert.ToBase64String(ms.ToArray());
+        return IsLicenseValidOffline(username, string.Empty, out reason);
     }
 
-    private static string DecryptString(string cipherText)
+    private static string EncryptData(string plainText)
     {
-        var buffer = Convert.FromBase64String(cipherText);
-        using var aes = Aes.Create();
-        aes.Key = Key;
-        aes.IV = IV;
-        var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+        var bytes = Encoding.UTF8.GetBytes(plainText);
+        var encrypted = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(encrypted);
+    }
 
-        using var ms = new MemoryStream(buffer);
-        using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
-        using var reader = new StreamReader(cs);
-        return reader.ReadToEnd();
+    private static string DecryptData(string cipherText)
+    {
+        if (string.IsNullOrWhiteSpace(cipherText)) return string.Empty;
+
+        try
+        {
+            var buffer = Convert.FromBase64String(cipherText);
+            var decrypted = ProtectedData.Unprotect(buffer, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(decrypted);
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 }

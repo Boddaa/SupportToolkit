@@ -1,0 +1,1465 @@
+<Page x:Class="NetworkDiscoveryTool.UI.Views.ProcessManager.ProcessManagerPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+      xmlns:models="clr-namespace:NetworkDiscoveryTool.UI.Models"
+      xmlns:local="clr-namespace:NetworkDiscoveryTool.UI.Views.ProcessManager"
+      Title="Process Manager"
+      Background="{DynamicResource PageBgBrush}"
+      UseLayoutRounding="True"
+      SnapsToDevicePixels="True"
+      TextOptions.TextFormattingMode="Display"
+      TextOptions.TextRenderingMode="ClearType"
+      RenderOptions.ClearTypeHint="Enabled"
+      Loaded="Page_Loaded"
+      Unloaded="Page_Unloaded">
+
+    <Page.Resources>
+        <!-- DataContext Proxy for ContextMenus and Popups -->
+        <local:BindingProxy x:Key="VmProxy" Data="{Binding}"/>
+
+        <!-- Cyber Secondary Button Style -->
+        <Style x:Key="CyberSecondaryBtn" TargetType="Button" BasedOn="{StaticResource BtnSecondary}">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Tab Header Button Style -->
+        <Style x:Key="TabHeaderBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Interactive KPI Card Button Style -->
+        <Style x:Key="InteractiveKpiCardStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="CardBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CardBorder" Property="Background" Value="#201E293B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Shared Process Row ContextMenu with VmProxy -->
+        <ContextMenu x:Key="ProcessRowContextMenu">
+            <MenuItem Header="View Details"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.SelectProcessCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <MenuItem Header="Open File Location"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.OpenFileLocationCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <MenuItem Header="Properties"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.ShowFilePropertiesCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <MenuItem Header="Search Online"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.SearchOnlineCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <MenuItem Header="Copy Info"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.CopyProcessInfoCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <Separator/>
+            <MenuItem Header="Set Priority">
+                <MenuItem Header="Realtime"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="Realtime"/>
+                <MenuItem Header="High"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="High"/>
+                <MenuItem Header="Above Normal"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="AboveNormal"/>
+                <MenuItem Header="Normal"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="Normal"/>
+                <MenuItem Header="Below Normal"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="BelowNormal"/>
+                <MenuItem Header="Low"
+                          Command="{Binding Source={StaticResource VmProxy}, Path=Data.ChangePriorityCommand}"
+                          CommandParameter="Idle"/>
+            </MenuItem>
+            <Separator/>
+            <MenuItem Header="End Process"
+                      Foreground="{DynamicResource DangerBrush}"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.PromptEndProcessCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+            <MenuItem Header="End Process Tree"
+                      Foreground="{DynamicResource DangerBrush}"
+                      Command="{Binding Source={StaticResource VmProxy}, Path=Data.PromptEndProcessTreeCommand}"
+                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+        </ContextMenu>
+
+        <Style x:Key="KpiCardBorder" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16,14"/>
+        </Style>
+    </Page.Resources>
+
+    <Grid>
+        <!-- Main Scrollable / Viewport Layout -->
+        <Grid Margin="24,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT MAIN WORKSPACE -->
+            <Grid Grid.Column="0" Margin="0,0,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/> <!-- 0. Hero Header -->
+                    <RowDefinition Height="Auto"/> <!-- 1. Top 5 KPI Cards -->
+                    <RowDefinition Height="Auto"/> <!-- 2. Main Tabs (Processes, Apps, Performance, Startup) -->
+                    <RowDefinition Height="Auto"/> <!-- 3. Toolbar (Search, Filters, Actions) -->
+                    <RowDefinition Height="*"/>    <!-- 4. Main Views (Process / Startup / Performance) -->
+                    <RowDefinition Height="Auto"/> <!-- 5. Bottom Live Monitoring Section -->
+                </Grid.RowDefinitions>
+
+                <!-- ============================================================ -->
+                <!-- 0. HERO HEADER                                               -->
+                <!-- ============================================================ -->
+                <Grid Grid.Row="0" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Title & Live Badge -->
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="Process Manager" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,12,0"/>
+                            
+                            <!-- Live Monitoring Pulse Badge -->
+                            <Border Background="#1510B981" BorderBrush="#3510B981" BorderThickness="1" CornerRadius="12" Padding="8,3" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="6" Height="6" Fill="{DynamicResource SuccessBrush}" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding StatusBadgeText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Monitor running processes, applications and system resource usage in real-time." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Margin="0,4,0,0"/>
+                    </StackPanel>
+
+                    <!-- Header Controls: Refresh, Auto-Refresh, End Task -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Refresh Button -->
+                        <Button Style="{StaticResource CyberSecondaryBtn}" Height="34" Margin="0,0,10,0" Padding="12,0"
+                                Command="{Binding RefreshNowCommand}" Cursor="Hand">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Refresh" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Auto-Refresh ComboBox -->
+                        <ComboBox Style="{StaticResource ModernDarkComboBox}"
+                                  ItemsSource="{Binding IntervalOptions}"
+                                  SelectedItem="{Binding SelectedIntervalOption}"
+                                  Height="34" MinWidth="145" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                        <!-- End Task Button -->
+                        <Button Height="34" Padding="14,0" Cursor="Hand"
+                                Command="{Binding PromptEndProcessCommand}"
+                                IsEnabled="{Binding HasSelectedProcess}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="{DynamicResource DangerBrush}"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="btnBorder" Property="Opacity" Value="0.9"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="btnBorder" Property="Background" Value="#33EF4444"/>
+                                                        <Setter Property="Foreground" Value="#66FFFFFF"/>
+                                                        <Setter Property="Cursor" Value="Arrow"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding EndTaskButtonText}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- ============================================================ -->
+                <!-- 1. TOP 5 INTERACTIVE KPI CARDS                                -->
+                <!-- ============================================================ -->
+                <Grid Grid.Row="1" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Card 1: CPU Usage -->
+                    <Button Grid.Column="0" Command="{Binding FilterByCpuCardCommand}" Margin="0,0,8,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource InteractiveKpiCardStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveKpiFilter}" Value="CPU">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                        <Setter Property="Background" Value="#150EA5E9"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="26" Height="26" CornerRadius="6" Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="CPU Usage" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding CpuUsageText}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                <TextBlock Text="{Binding CpuSpeedText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <Polyline Points="{Binding CpuSparklinePoints}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Width="80" Height="20" Stretch="Fill"/>
+                            </Grid>
+                        </Grid>
+                    </Button>
+
+                    <!-- Card 2: Memory Usage -->
+                    <Button Grid.Column="1" Command="{Binding FilterByMemoryCardCommand}" Margin="4,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource InteractiveKpiCardStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveKpiFilter}" Value="Memory">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource PurpleBrush}"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                        <Setter Property="Background" Value="#15A855F7"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="26" Height="26" CornerRadius="6" Background="#15A855F7" BorderBrush="#35A855F7" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xE964;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource PurpleBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Memory Usage" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding MemoryUsageText}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                <TextBlock Text="Physical RAM" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <Polyline Points="{Binding MemorySparklinePoints}" Stroke="{DynamicResource PurpleBrush}" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Width="80" Height="20" Stretch="Fill"/>
+                            </Grid>
+                        </Grid>
+                    </Button>
+
+                    <!-- Card 3: Active Processes -->
+                    <Button Grid.Column="2" Command="{Binding FilterByProcessesCardCommand}" Margin="4,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource InteractiveKpiCardStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveKpiFilter}" Value="Processes">
+                                        <Setter Property="BorderBrush" Value="#14B8A6"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                        <Setter Property="Background" Value="#1514B8A6"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="26" Height="26" CornerRadius="6" Background="#1514B8A6" BorderBrush="#3514B8A6" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#14B8A6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Processes" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding ProcessesCountText}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                <TextBlock Text="Active Tasks" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <Polyline Points="{Binding ProcessesSparklinePoints}" Stroke="#14B8A6" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Width="80" Height="20" Stretch="Fill"/>
+                            </Grid>
+                        </Grid>
+                    </Button>
+
+                    <!-- Card 4: Threads -->
+                    <Button Grid.Column="3" Command="{Binding FilterByThreadsCardCommand}" Margin="4,0,4,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource InteractiveKpiCardStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveKpiFilter}" Value="Threads">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                        <Setter Property="Background" Value="#1510B981"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="26" Height="26" CornerRadius="6" Background="#1510B981" BorderBrush="#3510B981" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xE81D;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Threads" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding ThreadsCountText}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                <TextBlock Text="Execution Threads" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <Polyline Points="{Binding ThreadsSparklinePoints}" Stroke="{DynamicResource SuccessBrush}" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Width="80" Height="20" Stretch="Fill"/>
+                            </Grid>
+                        </Grid>
+                    </Button>
+
+                    <!-- Card 5: Handles -->
+                    <Button Grid.Column="4" Command="{Binding FilterByHandlesCardCommand}" Margin="8,0,0,0">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource InteractiveKpiCardStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveKpiFilter}" Value="Handles">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}"/>
+                                        <Setter Property="BorderThickness" Value="2"/>
+                                        <Setter Property="Background" Value="#15F59E0B"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="26" Height="26" CornerRadius="6" Background="#15F59E0B" BorderBrush="#35F59E0B" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xEA18;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Handles" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Text="{Binding HandlesCountText}" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <Grid Grid.Row="2" Margin="0,4,0,0">
+                                <TextBlock Text="Kernel Handles" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                <Polyline Points="{Binding HandlesSparklinePoints}" Stroke="{DynamicResource WarningBrush}" StrokeThickness="1.5" HorizontalAlignment="Right" VerticalAlignment="Center" Width="80" Height="20" Stretch="Fill"/>
+                            </Grid>
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <!-- ============================================================ -->
+                <!-- 2. MAIN TABS (Processes, Applications, Performance, Startup) -->
+                <!-- ============================================================ -->
+                <Grid Grid.Row="2" Margin="0,0,0,12">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Processes" Command="{Binding SelectTabCommand}" CommandParameter="Processes">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsProcessesTab}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Applications" Command="{Binding SelectTabCommand}" CommandParameter="Applications">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsApplicationsTab}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Performance" Command="{Binding SelectTabCommand}" CommandParameter="Performance">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPerformanceTab}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Startup" Command="{Binding SelectTabCommand}" CommandParameter="Startup">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStartupTab}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                    <Border Height="1" Background="{DynamicResource CardBorderBrush}" VerticalAlignment="Bottom"/>
+                </Grid>
+
+                <!-- ============================================================ -->
+                <!-- 3. ACTION & FILTER TOOLBAR                                   -->
+                <!-- ============================================================ -->
+                <Grid Grid.Row="3" Margin="0,0,0,10">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPerformanceTab}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Search Box -->
+                    <Border Grid.Column="0" Height="36" CornerRadius="8" Background="{DynamicResource InputBgBrush}"
+                            BorderBrush="{DynamicResource InputBorderBrush}" BorderThickness="1" Margin="0,0,10,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="32"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBox Grid.Column="1" Background="Transparent" BorderThickness="0"
+                                     Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" VerticalContentAlignment="Center"
+                                     CaretBrush="{DynamicResource AccentBrush}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Column="1" Text="Search processes by name, PID, user..." IsHitTestVisible="False"
+                                       Foreground="{DynamicResource TextMutedBrush}" FontSize="12" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
+                    <!-- Category Filter Dropdown -->
+                    <ComboBox Grid.Column="1" Style="{StaticResource ModernDarkComboBox}"
+                              ItemsSource="{Binding CategoryFilters}"
+                              SelectedItem="{Binding SelectedCategoryFilter}"
+                              Height="36" MinWidth="150" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                    <!-- User Filter Dropdown -->
+                    <ComboBox Grid.Column="2" Style="{StaticResource ModernDarkComboBox}"
+                              ItemsSource="{Binding UserFilters}"
+                              SelectedItem="{Binding SelectedUserFilter}"
+                              Height="36" MinWidth="130" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                    <!-- List / Tree View Toggle -->
+                    <Button Grid.Column="4" Style="{StaticResource CyberSecondaryBtn}" Height="34" Margin="0,0,10,0" Padding="12,0"
+                            Command="{Binding ToggleViewModeCommand}" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE81E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ViewModeButtonText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Sort Dropdown/Button -->
+                    <Button Grid.Column="5" Style="{StaticResource CyberSecondaryBtn}" Height="34" Padding="12,0"
+                            Command="{Binding SortByColumnCommand}" CommandParameter="CpuUsage" Cursor="Hand">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8CB;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Sort: CPU" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <!-- ============================================================ -->
+                <!-- 4. MAIN VIEWPORT (Processes / Startup / Performance)          -->
+                <!-- ============================================================ -->
+                <Border Grid.Row="4" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                        BorderThickness="1" CornerRadius="10" MinHeight="260">
+                    <Grid>
+                        <!-- A. PROCESSES & APPLICATIONS DATA GRID -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStartupTab}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsPerformanceTab}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <DataGrid x:Name="ProcessGrid"
+                                      ItemsSource="{Binding Processes}"
+                                      SelectedItem="{Binding SelectedProcess, Mode=TwoWay}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserResizeRows="False"
+                                      IsReadOnly="True"
+                                      SelectionMode="Single"
+                                      GridLinesVisibility="None"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      RowHeight="36"
+                                      HeadersVisibility="Column"
+                                      SelectionChanged="ProcessGrid_SelectionChanged"
+                                      PreviewMouseLeftButtonDown="ProcessGrid_PreviewMouseLeftButtonDown"
+                                      VirtualizingStackPanel.IsVirtualizing="True"
+                                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                      ScrollViewer.CanContentScroll="True"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+
+                                <DataGrid.Resources>
+                                    <!-- Clean Column Header Style -->
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                        <Setter Property="FontSize" Value="11"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Padding" Value="12,8"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    </Style>
+
+                                    <!-- Clean Row Style with Hover, Selection & Row ContextMenu -->
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                        <Setter Property="BorderBrush" Value="#0AFFFFFF"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Setter Property="ContextMenu" Value="{StaticResource ProcessRowContextMenu}"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#150EA5E9"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#250EA5E9"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+
+                                    <Style TargetType="DataGridCell">
+                                        <Setter Property="Padding" Value="10,0"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="DataGridCell">
+                                                    <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </DataGrid.Resources>
+
+                                <DataGrid.Columns>
+                                    <!-- Process Name with Real Application Icon -->
+                                    <DataGridTemplateColumn Header="Process Name" Width="220">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="{Binding IndentLevel, Converter={local:IndentToMarginConverter}}">
+                                                    <!-- Icon Container -->
+                                                    <Grid Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                        <!-- Default glyph fallback -->
+                                                        <Border CornerRadius="4" Background="#150EA5E9">
+                                                            <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <!-- Real extracted application icon -->
+                                                        <Image Source="{Binding Icon}" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                            <Image.Style>
+                                                                <Style TargetType="Image">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasCustomIcon}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Image.Style>
+                                                        </Image>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- PID -->
+                                    <DataGridTextColumn Header="PID" Binding="{Binding Id}" Width="80">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="12"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Status Badge -->
+                                    <DataGridTemplateColumn Header="Status" Width="95">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#1510B981" BorderBrush="#3510B981" BorderThickness="1" CornerRadius="6" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- CPU % -->
+                                    <DataGridTemplateColumn Header="CPU" Width="85">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding CpuUsageText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Memory -->
+                                    <DataGridTextColumn Header="Memory" Binding="{Binding MemoryUsageText}" Width="100">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="12"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Threads -->
+                                    <DataGridTextColumn Header="Threads" Binding="{Binding ThreadCount}" Width="80">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="12"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- User -->
+                                    <DataGridTextColumn Header="User" Binding="{Binding UserName}" Width="100">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Priority -->
+                                    <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="90">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Path -->
+                                    <DataGridTextColumn Header="Path" Binding="{Binding ExecutablePath}" Width="*">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Quick Actions (⋮) -->
+                                    <DataGridTemplateColumn Width="45">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Width="26" Height="26" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                        Click="RowActionBtn_Click" ContextMenu="{StaticResource ProcessRowContextMenu}">
+                                                    <TextBlock Text="&#xE712;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                </Button>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <!-- Empty Search Results Placeholder -->
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Processes.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="No processes match your search or filter" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Try clearing the search term or resetting the category filter." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- B. STARTUP APPLICATIONS VIEW (Task Manager Startup Tab) -->
+                        <Grid>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsStartupTab}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <DataGrid ItemsSource="{Binding StartupItems}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      IsReadOnly="True"
+                                      SelectionMode="Single"
+                                      GridLinesVisibility="None"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      RowHeight="38"
+                                      HeadersVisibility="Column"
+                                      ScrollViewer.CanContentScroll="True">
+                                <DataGrid.Resources>
+                                    <Style TargetType="DataGridColumnHeader">
+                                        <Setter Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                        <Setter Property="FontSize" Value="11"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="Padding" Value="12,8"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    </Style>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                        <Setter Property="BorderBrush" Value="#0AFFFFFF"/>
+                                    </Style>
+                                </DataGrid.Resources>
+
+                                <DataGrid.Columns>
+                                    <!-- App Name with Real Executable Icon -->
+                                    <DataGridTemplateColumn Header="Name" Width="220">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Grid Width="20" Height="20" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                        <Border CornerRadius="4" Background="#150EA5E9">
+                                                            <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <Image Source="{Binding Icon}" Width="16" Height="16" RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center">
+                                                            <Image.Style>
+                                                                <Style TargetType="Image">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasCustomIcon}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Image.Style>
+                                                        </Image>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Publisher -->
+                                    <DataGridTextColumn Header="Publisher" Binding="{Binding Publisher}" Width="160">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Status Badge -->
+                                    <DataGridTemplateColumn Header="Status" Width="95">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#1510B981" BorderBrush="#3510B981" BorderThickness="1" CornerRadius="6" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Startup Impact -->
+                                    <DataGridTemplateColumn Header="Startup Impact" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#150EA5E9" BorderBrush="#350EA5E9" BorderThickness="1" CornerRadius="6" Padding="6,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Impact}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Command Line -->
+                                    <DataGridTextColumn Header="Command" Binding="{Binding Command}" Width="*">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="11"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!-- Registry / Source Location -->
+                                    <DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="140">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="FontSize" Value="10"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+
+                        <!-- C. PERFORMANCE DASHBOARD VIEW -->
+                        <Grid Margin="18">
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPerformanceTab}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Big CPU Chart -->
+                            <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource KpiCardBorder}" Margin="0,0,8,8">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="CPU Performance Overview" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding OverallCpuPercentText}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Border Height="110" Background="#0A0EA5E9" CornerRadius="6" Padding="6">
+                                        <Polyline Points="{Binding OverallCpu60sPoints}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2.5" Stretch="Fill"/>
+                                    </Border>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock Text="Utilization 60s" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding CpuSpeedText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Big Memory Chart -->
+                            <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource KpiCardBorder}" Margin="8,0,0,8">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,8">
+                                        <TextBlock Text="Memory Performance Overview" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding OverallMemoryText}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource PurpleBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                    <Border Height="110" Background="#0AA855F7" CornerRadius="6" Padding="6">
+                                        <Polyline Points="{Binding OverallMemory60sPoints}" Stroke="{DynamicResource PurpleBrush}" StrokeThickness="2.5" Stretch="Fill"/>
+                                    </Border>
+                                    <Grid Margin="0,8,0,0">
+                                        <TextBlock Text="Committed 60s" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding MemoryUsageText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Process and Thread Statistics -->
+                            <Border Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource KpiCardBorder}" Margin="0,8,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Active Processes" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding ProcessesCountText}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Total Threads" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding ThreadsCountText}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Total Kernel Handles" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                        <TextBlock Text="{Binding HandlesCountText}" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- ============================================================ -->
+                <!-- 5. BOTTOM MONITORING SECTION (Charts + Top Resource Users)   -->
+                <!-- ============================================================ -->
+                <Grid Grid.Row="5" Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="1.2*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Bottom Card 1: CPU Usage (Overall 60s) -->
+                    <Border Grid.Column="0" Style="{StaticResource KpiCardBorder}" Margin="0,0,8,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="CPU Usage (Overall)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding OverallCpuPercentText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Border Grid.Row="1" Height="65" Background="#0A0EA5E9" CornerRadius="6" Padding="6">
+                                <Polyline Points="{Binding OverallCpu60sPoints}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" Stretch="Fill"/>
+                            </Border>
+                            <TextBlock Grid.Row="2" Text="60 Seconds" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,6,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Bottom Card 2: Memory Usage (Overall 60s) -->
+                    <Border Grid.Column="1" Style="{StaticResource KpiCardBorder}" Margin="4,0,4,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="Memory Usage" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding OverallMemoryText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource PurpleBrush}" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <Border Grid.Row="1" Height="65" Background="#0AA855F7" CornerRadius="6" Padding="6">
+                                <Polyline Points="{Binding OverallMemory60sPoints}" Stroke="{DynamicResource PurpleBrush}" StrokeThickness="2" Stretch="Fill"/>
+                            </Border>
+                            <TextBlock Grid.Row="2" Text="60 Seconds" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,6,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Bottom Card 3: Top Processes by Resource Usage -->
+                    <Border Grid.Column="2" Style="{StaticResource KpiCardBorder}" Margin="8,0,0,0">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <TextBlock Text="Top Processes by Resource" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <Button Style="{StaticResource CyberSecondaryBtn}" Height="22" Padding="8,0" FontSize="10" HorizontalAlignment="Right" Command="{Binding ToggleTopMetricCommand}">
+                                    <TextBlock Text="{Binding TopProcessesMetric, StringFormat={}{0} ▼}"/>
+                                </Button>
+                            </Grid>
+
+                            <!-- Top 5 List -->
+                            <ItemsControl Grid.Row="1" ItemsSource="{Binding TopProcesses}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="65"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding CpuUsageText}" FontSize="11" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding MemoryUsageText}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ============================================================ -->
+            <!-- RIGHT PROCESS DETAILS DRAWER (Inspector Panel)                -->
+            <!-- ============================================================ -->
+            <Border Grid.Column="1" Width="380" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1,0,0,0" Margin="-16,-18,-24,-18" Padding="20,18">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasSelectedProcess}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- Header -->
+                        <RowDefinition Height="Auto"/> <!-- Quick Actions -->
+                        <RowDefinition Height="Auto"/> <!-- Drawer Tabs -->
+                        <RowDefinition Height="*"/>    <!-- Drawer Tab Content (ScrollViewer) -->
+                        <RowDefinition Height="Auto"/> <!-- Footer Action Buttons -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Drawer Header with Real Process Icon -->
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Icon Container -->
+                        <Border Width="38" Height="38" CornerRadius="8" Background="#200EA5E9" BorderBrush="#400EA5E9" BorderThickness="1" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock Text="&#xE7F8;" FontFamily="Segoe MDL2 Assets" FontSize="18" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Image Source="{Binding SelectedProcess.Icon}" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Image.Style>
+                                        <Style TargetType="Image">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedProcess.HasCustomIcon}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Image.Style>
+                                </Image>
+                            </Grid>
+                        </Border>
+
+                        <!-- Process Title & Description -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedProcess.Name}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding SelectedProcess.Description}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <!-- Close Button -->
+                        <Button Grid.Column="2" Width="28" Height="28" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Command="{Binding CloseDrawerCommand}">
+                            <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                        </Button>
+                    </Grid>
+
+                    <!-- Quick Action Buttons: End Process, More Actions -->
+                    <Grid Grid.Row="1" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Height="32" Background="{DynamicResource DangerBrush}" BorderThickness="0" Foreground="White"
+                                FontSize="11" FontWeight="Bold" Margin="0,0,8,0" Cursor="Hand" Command="{Binding PromptEndProcessCommand}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="6" Padding="12,0">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="End Process" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <Button Grid.Column="1" Style="{StaticResource CyberSecondaryBtn}" Height="32" Padding="10,0" FontSize="11" FontWeight="SemiBold" Cursor="Hand" Click="MoreActionsBtn_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="More Actions" VerticalAlignment="Center"/>
+                                <TextBlock Text=" &#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="9" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Search Online" Command="{Binding SearchOnlineCommand}"/>
+                                    <MenuItem Header="Copy All Details" Command="{Binding CopyProcessInfoCommand}"/>
+                                    <MenuItem Header="Open File Location" Command="{Binding OpenFileLocationCommand}"/>
+                                    <MenuItem Header="Properties" Command="{Binding ShowFilePropertiesCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Set Priority">
+                                        <MenuItem Header="Realtime" Command="{Binding ChangePriorityCommand}" CommandParameter="Realtime"/>
+                                        <MenuItem Header="High" Command="{Binding ChangePriorityCommand}" CommandParameter="High"/>
+                                        <MenuItem Header="Above Normal" Command="{Binding ChangePriorityCommand}" CommandParameter="AboveNormal"/>
+                                        <MenuItem Header="Normal" Command="{Binding ChangePriorityCommand}" CommandParameter="Normal"/>
+                                        <MenuItem Header="Below Normal" Command="{Binding ChangePriorityCommand}" CommandParameter="BelowNormal"/>
+                                        <MenuItem Header="Low" Command="{Binding ChangePriorityCommand}" CommandParameter="Idle"/>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <MenuItem Header="End Process Tree" Foreground="{DynamicResource DangerBrush}" Command="{Binding PromptEndProcessTreeCommand}"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </Grid>
+
+                    <!-- Drawer Sub-Tabs: Details, Performance, Modules, Handles, Threads -->
+                    <Grid Grid.Row="2" Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Details" Command="{Binding SelectDrawerTabCommand}" CommandParameter="Details">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerDetailsSelected}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <Button Content="Performance" Command="{Binding SelectDrawerTabCommand}" CommandParameter="Performance">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerPerformanceSelected}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <Button Content="Modules" Command="{Binding SelectDrawerTabCommand}" CommandParameter="Modules">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerModulesSelected}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+
+                            <Button Content="Handles" Command="{Binding SelectDrawerTabCommand}" CommandParameter="Handles">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource TabHeaderBtn}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerHandlesSelected}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                        <Border Height="1" Background="{DynamicResource CardBorderBrush}" VerticalAlignment="Bottom"/>
+                    </Grid>
+
+                    <!-- Drawer Tab Body -->
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <!-- 1. DETAILS TAB CONTENT -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerDetailsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <!-- Key-Value Detail Rows -->
+                                <local:ProcessDetailRow Label="PID" Value="{Binding SelectedProcess.Id}"/>
+                                <local:ProcessDetailRow Label="Status" Value="{Binding SelectedProcess.Status}"/>
+                                <local:ProcessDetailRow Label="User" Value="{Binding SelectedProcess.UserName}"/>
+                                <local:ProcessDetailRow Label="Session ID" Value="{Binding SelectedProcess.SessionId}"/>
+                                <local:ProcessDetailRow Label="Priority" Value="{Binding SelectedProcess.Priority}"/>
+                                <local:ProcessDetailRow Label="Started" Value="{Binding SelectedProcess.StartTimeText}"/>
+                                <local:ProcessDetailRow Label="CPU Usage" Value="{Binding SelectedProcess.CpuUsageText}"/>
+                                <local:ProcessDetailRow Label="Memory Usage" Value="{Binding SelectedProcess.MemoryUsageText}"/>
+                                <local:ProcessDetailRow Label="Thread Count" Value="{Binding SelectedProcess.ThreadCount}"/>
+                                <local:ProcessDetailRow Label="Parent Process" Value="{Binding SelectedProcess.ParentProcessName}"/>
+                                <local:ProcessDetailRow Label="Executable Path" Value="{Binding SelectedProcess.ExecutablePath}"/>
+                                <local:ProcessDetailRow Label="Description" Value="{Binding SelectedProcess.Description}"/>
+                                <local:ProcessDetailRow Label="Company" Value="{Binding SelectedProcess.Company}"/>
+                                <local:ProcessDetailRow Label="File Version" Value="{Binding SelectedProcess.FileVersion}"/>
+                            </StackPanel>
+
+                            <!-- 2. PERFORMANCE TAB CONTENT -->
+                            <StackPanel Margin="0,4,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerPerformanceSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+
+                                <!-- Process CPU Live Sparkline -->
+                                <Border Style="{StaticResource KpiCardBorder}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <TextBlock Text="CPU Utilization" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding SelectedProcess.CpuUsageText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Border Height="50" Background="#0A0EA5E9" CornerRadius="6" Padding="4">
+                                            <Polyline Points="{Binding DrawerCpuSparkline}" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" Stretch="Fill"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Process Memory Live Sparkline -->
+                                <Border Style="{StaticResource KpiCardBorder}" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,6">
+                                            <TextBlock Text="Private Working Set" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding SelectedProcess.MemoryUsageText}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource PurpleBrush}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Border Height="50" Background="#0AA855F7" CornerRadius="6" Padding="4">
+                                            <Polyline Points="{Binding DrawerMemorySparkline}" Stroke="{DynamicResource PurpleBrush}" StrokeThickness="2" Stretch="Fill"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Process Disk / Network IO -->
+                                <Border Style="{StaticResource KpiCardBorder}">
+                                    <StackPanel>
+                                        <TextBlock Text="I/O Activity" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                                        <Grid Margin="0,2">
+                                            <TextBlock Text="Disk I/O" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                            <TextBlock Text="N/A" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <Grid Margin="0,2">
+                                            <TextBlock Text="Network I/O" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                            <TextBlock Text="N/A" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <!-- 3. MODULES / HANDLES PLACEHOLDER -->
+                            <StackPanel Margin="0,40,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsDrawerModulesSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDrawerHandlesSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsDrawerThreadsSelected}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="26" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                <TextBlock Text="Module &amp; Handle Inspection" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Deep binary inspection and handle resolution requires elevated debugging privileges." FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" Margin="10,4,10,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Drawer Footer Buttons -->
+                    <Grid Grid.Row="4" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0" Style="{StaticResource CyberSecondaryBtn}" Height="34" Margin="0,0,6,0" Cursor="Hand" Command="{Binding OpenFileLocationCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xED25;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Open Location" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Button Grid.Column="1" Style="{StaticResource CyberSecondaryBtn}" Height="34" Margin="6,0,0,0" Cursor="Hand" Command="{Binding ShowFilePropertiesCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Properties" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============================================================ -->
+        <!-- TERMINATION CONFIRMATION MODAL OVERLAY                       -->
+        <!-- ============================================================ -->
+        <Grid Panel.ZIndex="999">
+            <Grid.Style>
+                <Style TargetType="Grid">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsConfirmDialogOpen}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Grid.Style>
+
+            <!-- Dimmed Backdrop -->
+            <Border Background="#80000000"/>
+
+            <!-- Dialog Box -->
+            <Border Width="420" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Border Width="34" Height="34" CornerRadius="8" Background="#20EF4444" BorderBrush="#40EF4444" BorderThickness="1" Margin="0,0,12,0">
+                            <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding ConfirmDialogTitle}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding ConfirmDialogMessage}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource CyberSecondaryBtn}" Height="34" Padding="16,0" Margin="0,0,10,0"
+                                Command="{Binding CancelActionCommand}" Content="Cancel" Cursor="Hand"/>
+
+                        <Button Height="34" Padding="18,0" Background="{DynamicResource DangerBrush}" BorderThickness="0"
+                                Foreground="White" FontWeight="Bold" FontSize="12" Cursor="Hand" Command="{Binding ConfirmActionCommand}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <TextBlock Text="End Process"/>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
