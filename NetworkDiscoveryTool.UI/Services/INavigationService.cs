@@ -14,10 +14,11 @@ public interface INavigationService
     void NavigateToWindowsServices();
     void NavigateToSqlTester();
     void NavigateToIisMonitor();
+    void NavigateToProcessManager();
     void NavigateToLogCollector();
-    void NavigateToScreenshot();
     void NavigateToOperationHistory();
     void NavigateToSettings();
     void NavigateToDeviceDetails(int deviceId);
     void NavigateToDeviceDetails(string ip);
+    void NavigateTo(string pageName);
 }

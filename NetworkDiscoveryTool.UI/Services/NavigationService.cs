@@ -10,8 +10,8 @@ using NetworkDiscoveryTool.UI.Views.OperationHistory;
 using NetworkDiscoveryTool.UI.Views.PingTool;
 using NetworkDiscoveryTool.UI.Views.PortChecker;
 using NetworkDiscoveryTool.UI.Views.Scan;
-using NetworkDiscoveryTool.UI.Views.Screenshot;
 using NetworkDiscoveryTool.UI.Views.Settings;
+using NetworkDiscoveryTool.UI.Views.ProcessManager;
 using NetworkDiscoveryTool.UI.Views.SqlTester;
 using NetworkDiscoveryTool.UI.Views.SystemInfo;
 using NetworkDiscoveryTool.UI.ViewModels;
@@ -53,8 +53,8 @@ public class NavigationService : INavigationService
     public void NavigateToWindowsServices() => Navigate(GetPage<WindowsServicesPage>());
     public void NavigateToSqlTester() => Navigate(_serviceProvider.GetRequiredService<SqlTesterPage>());
     public void NavigateToIisMonitor() => Navigate(GetPage<IisMonitorPage>());
+    public void NavigateToProcessManager() => Navigate(GetPage<ProcessManagerPage>());
     public void NavigateToLogCollector() => Navigate(GetPage<LogCollectorPage>());
-    public void NavigateToScreenshot() => Navigate(GetPage<ScreenshotPage>());
     public void NavigateToOperationHistory() => Navigate(GetPage<OperationHistoryPage>());
     public void NavigateToSettings() => Navigate(GetPage<SettingsPage>());
 
@@ -70,6 +70,56 @@ public class NavigationService : INavigationService
         var vm = _serviceProvider.GetRequiredService<DeviceDetailsViewModel>();
         var page = new DeviceDetailsPage(vm, ip);
         Navigate(page);
+    }
+
+    public void NavigateTo(string pageName)
+    {
+        switch (pageName?.Trim())
+        {
+            case "NetworkDiscovery":
+            case "Scan":
+                NavigateToNetworkDiscovery();
+                break;
+            case "LiveTopology":
+            case "Topology":
+                NavigateToLiveTopology();
+                break;
+            case "PingTool":
+                NavigateToPingTool();
+                break;
+            case "PortChecker":
+                NavigateToPortChecker();
+                break;
+            case "SystemInfo":
+                NavigateToSystemInfo();
+                break;
+            case "WindowsServices":
+            case "Services":
+                NavigateToWindowsServices();
+                break;
+            case "SqlTester":
+                NavigateToSqlTester();
+                break;
+            case "IisMonitor":
+                NavigateToIisMonitor();
+                break;
+            case "ProcessManager":
+                NavigateToProcessManager();
+                break;
+            case "LogCollector":
+                NavigateToLogCollector();
+                break;
+            case "OperationHistory":
+                NavigateToOperationHistory();
+                break;
+            case "Settings":
+                NavigateToSettings();
+                break;
+            case "Dashboard":
+            default:
+                NavigateToDashboard();
+                break;
+        }
     }
 
     private void Navigate(Page page)

@@ -1,0 +1,14 @@
+<UserControl x:Class="NetworkDiscoveryTool.UI.Views.ProcessManager.ProcessDetailRow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="0,3">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="110"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock x:Name="TxtLabel" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+        <TextBox x:Name="TxtValue" Grid.Column="1" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}"
+                 Background="Transparent" BorderThickness="0" IsReadOnly="True" VerticalAlignment="Center"
+                 TextWrapping="Wrap"/>
+    </Grid>
+</UserControl>
