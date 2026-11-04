@@ -333,8 +333,6 @@
                           AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
                           Style="{StaticResource DGrid}"
                           RowHeight="48"
-                          RowBackground="{DynamicResource CardBgBrush}"
-                          AlternatingRowBackground="{DynamicResource CardBgAltBrush}"
                           MouseDoubleClick="DataGrid_MouseDoubleClick">
                     <DataGrid.Resources>
                         <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}">

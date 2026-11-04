@@ -558,8 +558,7 @@
         <Setter Property="AutoGenerateColumns" Value="False"/>
         <Setter Property="CanUserAddRows" Value="False"/>
         <Setter Property="IsReadOnly" Value="True"/>
-        <Setter Property="RowBackground" Value="{DynamicResource CardBgBrush}"/>
-        <Setter Property="AlternatingRowBackground" Value="{DynamicResource CardBgAltBrush}"/>
+        <Setter Property="AlternationCount" Value="2"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="RowHeight" Value="48"/>
@@ -594,19 +593,34 @@
     <Style x:Key="DGridCell" TargetType="DataGridCell">
         <Setter Property="Padding" Value="8,4"/>
         <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border Background="Transparent"
+                            BorderThickness="0"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
 
     <Style x:Key="DGridRow" TargetType="DataGridRow">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
@@ -614,12 +628,19 @@
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="UseLayoutRounding" Value="True"/>
         <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource HoverBgBrush}"/>
+            <!-- Alternating Row -->
+            <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                <Setter Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
             </Trigger>
+            <!-- Smooth dark slate hover -->
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#1A2D47"/>
+            </Trigger>
+            <!-- Refined deep navy selection with accent highlight -->
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="{DynamicResource SelectedBgBrush}"/>
-                <Setter Property="Foreground" Value="{DynamicResource SelectedTextBrush}"/>
+                <Setter Property="Background" Value="#1E3A5F"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="White"/>
             </Trigger>
         </Style.Triggers>
     </Style>
