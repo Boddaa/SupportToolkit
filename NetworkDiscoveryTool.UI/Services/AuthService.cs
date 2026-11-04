@@ -14,25 +14,34 @@ public sealed class AuthService
     private readonly IDbContextFactory<AppDbContext> _contextFactory;
     private readonly LicenseService _licenseService;
     private readonly TelegramNotificationService _telegramService;
+    private readonly CloudAuthService _cloudAuth;
 
     public AuthService(
         IDbContextFactory<AppDbContext> contextFactory,
         LicenseService licenseService,
-        TelegramNotificationService telegramService)
+        TelegramNotificationService telegramService,
+        CloudAuthService? cloudAuth = null)
     {
         _contextFactory = contextFactory;
         _licenseService = licenseService;
         _telegramService = telegramService;
+        _cloudAuth = cloudAuth ?? new CloudAuthService();
     }
 
-    public sealed record AppUser(int Id, string Username, string Role);
+    public sealed record AppUser(
+        int Id,
+        string Username,
+        string Role,
+        string Status = "Subscribed",
+        DateTime? ExpiresAt = null,
+        double? RemainingHours = null);
 
     public void EnsureDefaultAdminExists()
     {
         try
         {
             using var context = _contextFactory.CreateDbContext();
-            bool hasAdmin = context.Users.Any(u => u.Role == "Administrator");
+            bool hasAdmin = context.Users.Any(u => u.Role == "Administrator" || u.Role == "Admin");
             if (!hasAdmin)
             {
                 var defaultAdmin = new User
@@ -56,30 +65,53 @@ public sealed class AuthService
         }
     }
 
-    public bool ValidateUser(string username, string password, out AppUser? user, out string? error)
+    public async Task<(bool Success, AppUser? User, string? Error)> ValidateUserAsync(string username, string password)
     {
-        user = null;
-        error = null;
-
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            return (false, null, "Username and password are required");
+
+        var cleanUsername = username.Trim();
+
+        // 1. Try Cloud Authentication (Central Database & Subscription Engine)
+        try
         {
-            error = "Username and password are required";
-            return false;
+            var cloudRes = await _cloudAuth.LoginAsync(cleanUsername, password);
+            if (cloudRes.Success)
+            {
+                var appUser = new AppUser(
+                    1,
+                    cleanUsername,
+                    cloudRes.Role ?? "User",
+                    cloudRes.Status ?? "Subscribed",
+                    cloudRes.ExpiresAt,
+                    cloudRes.RemainingHours);
+
+                _licenseService.SaveApprovedLicense(cleanUsername);
+                return (true, appUser, null);
+            }
+            else if (cloudRes.Status == "Expired" ||
+                     cloudRes.Message.Contains("expired", StringComparison.OrdinalIgnoreCase) ||
+                     cloudRes.Message.Contains("blocked", StringComparison.OrdinalIgnoreCase))
+            {
+                // Explicit rejection from Cloud (License expired or Device blocked)
+                return (false, null, cloudRes.Message);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Cloud authentication skipped or failed. Falling back to local verification.");
         }
 
+        // 2. Local Fallback Database
         try
         {
             using var context = _contextFactory.CreateDbContext();
-            var dbUser = context.Users.FirstOrDefault(u => u.Username == username.Trim());
+            var dbUser = context.Users.FirstOrDefault(u => u.Username == cleanUsername);
             if (dbUser is not null)
             {
                 if (!PasswordHasher.VerifyPassword(password, dbUser.PasswordHash, out bool needsRehash))
-                {
-                    error = "Invalid username or password";
-                    return false;
-                }
+                    return (false, null, "Invalid username or password");
 
-                // Automatic security upgrade: migrate legacy unsalted SHA-256 to salted PBKDF2
                 if (needsRehash)
                 {
                     try
@@ -87,37 +119,36 @@ public sealed class AuthService
                         dbUser.PasswordHash = PasswordHasher.HashPassword(password);
                         context.SaveChanges();
                     }
-                    catch { /* Continue login even if hash upgrade fails */ }
+                    catch { }
                 }
 
                 if (!dbUser.IsApproved)
-                {
-                    error = "Account pending admin approval.";
-                    return false;
-                }
+                    return (false, null, "Account pending admin approval.");
 
-                // Cache approved license locally for offline resilience with password hash
                 _licenseService.SaveApprovedLicense(dbUser.Username, dbUser.PasswordHash);
-
-                user = new AppUser(dbUser.Id, dbUser.Username, dbUser.Role);
-                return true;
+                return (true, new AppUser(dbUser.Id, dbUser.Username, dbUser.Role), null);
             }
         }
         catch
         {
-            // DB unreachable -> Fallback to Secure Encrypted Offline License Token
-            if (_licenseService.IsLicenseValidOffline(username.Trim(), password, out var offlineReason))
+            // 3. Fallback to Secure Encrypted Offline License Token
+            if (_licenseService.IsLicenseValidOffline(cleanUsername, password, out var offlineReason))
             {
-                user = new AppUser(1, username.Trim(), "User");
-                return true;
+                return (true, new AppUser(1, cleanUsername, "User"), null);
             }
 
-            error = offlineReason ?? "Offline credentials validation failed.";
-            return false;
+            return (false, null, offlineReason ?? "Offline credentials validation failed.");
         }
 
-        error = "Invalid username or password";
-        return false;
+        return (false, null, "Invalid username or password");
+    }
+
+    public bool ValidateUser(string username, string password, out AppUser? user, out string? error)
+    {
+        var res = ValidateUserAsync(username, password).GetAwaiter().GetResult();
+        user = res.User;
+        error = res.Error;
+        return res.Success;
     }
 
     public bool ValidateRememberedUser(string username, out AppUser? user, out string? error)
@@ -131,10 +162,12 @@ public sealed class AuthService
             return false;
         }
 
+        var clean = username.Trim();
+
         try
         {
             using var context = _contextFactory.CreateDbContext();
-            var dbUser = context.Users.FirstOrDefault(u => u.Username == username.Trim());
+            var dbUser = context.Users.FirstOrDefault(u => u.Username == clean);
             if (dbUser is not null)
             {
                 if (!dbUser.IsApproved)
@@ -149,10 +182,9 @@ public sealed class AuthService
         }
         catch
         {
-            // DB unreachable -> check offline license
-            if (_licenseService.IsLicenseValidOffline(username.Trim(), out var offlineReason))
+            if (_licenseService.IsLicenseValidOffline(clean, out var offlineReason))
             {
-                user = new AppUser(1, username.Trim(), "User");
+                user = new AppUser(1, clean, "User");
                 return true;
             }
 
@@ -164,17 +196,54 @@ public sealed class AuthService
         return false;
     }
 
-    public (bool Success, string Message) Register(string username, string password, string email = "")
+    public async Task<(bool Success, string Message, string? Status)> RegisterAsync(string username, string password, string email = "")
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return (false, "Username and password are required");
+            return (false, "Username and password are required", null);
 
         if (username.Length < 3)
-            return (false, "Username must be at least 3 characters");
+            return (false, "Username must be at least 3 characters", null);
 
         if (password.Length < 4)
-            return (false, "Password must be at least 4 characters");
+            return (false, "Password must be at least 4 characters", null);
 
+        var cleanUser = username.Trim();
+        var cleanPass = password;
+        var cleanEmail = email.Trim();
+
+        // 1. Try Cloud Registration with Anti-Cheat HWID check
+        try
+        {
+            var cloudRes = await _cloudAuth.RegisterAsync(cleanUser, cleanPass, cleanEmail);
+            if (cloudRes.Success)
+            {
+                return (true, cloudRes.Message, cloudRes.Status);
+            }
+            else if (cloudRes.Status == "Expired" ||
+                     cloudRes.Message.Contains("already used its 1-day free trial", StringComparison.OrdinalIgnoreCase) ||
+                     cloudRes.Message.Contains("already registered", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, cloudRes.Message, cloudRes.Status);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Cloud registration unreachable. Falling back to local registration.");
+        }
+
+        // 2. Local Database Registration Fallback
+        var (localSuccess, localMsg) = RegisterLocal(cleanUser, cleanPass, cleanEmail);
+        return (localSuccess, localMsg, "Pending");
+    }
+
+    public (bool Success, string Message) Register(string username, string password, string email = "")
+    {
+        var res = RegisterAsync(username, password, email).GetAwaiter().GetResult();
+        return (res.Success, res.Message);
+    }
+
+    private (bool Success, string Message) RegisterLocal(string username, string password, string email)
+    {
         var hardwareId = HardwareIdService.GetHardwareId();
 
         try
@@ -186,9 +255,9 @@ public sealed class AuthService
 
             var user = new User
             {
-                Username = username.Trim(),
+                Username = username,
                 PasswordHash = PasswordHasher.HashPassword(password),
-                Email = email.Trim(),
+                Email = email,
                 HardwareId = hardwareId,
                 Role = "User",
                 IsApproved = false,
@@ -198,7 +267,6 @@ public sealed class AuthService
             context.Users.Add(user);
             context.SaveChanges();
 
-            // Send async alert to Admin via Telegram ONLY if explicitly configured by admin
             if (_telegramService.IsConfigured)
             {
                 _ = Task.Run(async () =>

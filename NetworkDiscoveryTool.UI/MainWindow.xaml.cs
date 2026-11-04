@@ -281,7 +281,7 @@ public partial class MainWindow : Window
     public void UpdateUserDisplay(string username, string role)
     {
         UserDisplay.Text = username;
-        RoleDisplay.Text = role;
+        RoleDisplay.Text = $"{role} • {_currentUser.SubscriptionBadgeText}";
         UserAvatar.Text = username.FirstOrDefault('U').ToString();
     }
 

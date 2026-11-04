@@ -160,7 +160,7 @@ public sealed partial class LoginViewModel : ObservableObject
                 return;
             }
 
-            _currentUser.SetUser(user!.Id, user.Username, user.Role);
+            _currentUser.SetUser(user!.Id, user.Username, user.Role, user.Status, user.ExpiresAt, user.RemainingHours);
 
             // Update last active timestamp
             try
@@ -264,7 +264,7 @@ public sealed partial class LoginViewModel : ObservableObject
             }
 
             StopWaitingForApproval();
-            _currentUser.SetUser(user!.Id, user.Username, user.Role);
+            _currentUser.SetUser(user!.Id, user.Username, user.Role, user.Status, user.ExpiresAt, user.RemainingHours);
 
             if (RememberMe)
             {
