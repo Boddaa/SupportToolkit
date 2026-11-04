@@ -35,20 +35,22 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     {
         var cameraDict = new ConcurrentDictionary<string, DiscoveredCamera>(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Identify local IP & Subnet
-        var (localIp, subnetMask) = ResolveLocalNetwork(localInterfaceIp);
-        statusProgress?.Report($"Binding discovery engine to {(localIp?.ToString() ?? "All Interfaces")}...");
+        // 1. Identify local IPs & Subnets (Support multi-homed / multi-IP environments)
+        var localSubnets = GetAllLocalSubnets(localInterfaceIp);
+        var targetIps = GetActiveLocalIps(localInterfaceIp);
+
+        statusProgress?.Report($"Binding discovery engines to {targetIps.Count} local network endpoint(s)...");
 
         // 2. Launch All Discovery Engines concurrently
         statusProgress?.Report("Broadcasting ONVIF, Dahua, i-PRO & SADP discovery probes...");
 
         var tasks = new List<Task>
         {
-            Task.Run(() => RunOnvifDiscoveryAsync(cameraDict, localIp, ct), ct),
-            Task.Run(() => RunDahuaDiscoveryAsync(cameraDict, localIp, ct), ct),
-            Task.Run(() => RunSsdpDiscoveryAsync(cameraDict, localIp, ct), ct),
-            Task.Run(() => RunHikvisionSadpDiscoveryAsync(cameraDict, localIp, ct), ct),
-            Task.Run(() => ScanArpCacheForCamerasAsync(cameraDict, localIp, ct), ct)
+            Task.Run(() => RunOnvifDiscoveryAsync(cameraDict, targetIps, ct), ct),
+            Task.Run(() => RunDahuaDiscoveryAsync(cameraDict, targetIps, ct), ct),
+            Task.Run(() => RunSsdpDiscoveryAsync(cameraDict, targetIps, ct), ct),
+            Task.Run(() => RunHikvisionSadpDiscoveryAsync(cameraDict, targetIps, ct), ct),
+            Task.Run(() => ScanArpCacheForCamerasAsync(cameraDict, ct), ct)
         };
 
         try
@@ -91,7 +93,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                     {
                         cam.Brand = vendor.Brand;
                     }
-                    if (string.IsNullOrWhiteSpace(cam.ExtraInfo))
+                    if (string.IsNullOrWhiteSpace(cam.ExtraInfo) || cam.ExtraInfo.Contains("Device"))
                     {
                         cam.ExtraInfo = $"{vendor.CompanyName} ({vendor.Category})";
                     }
@@ -104,15 +106,25 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 cam.Brand = CameraOuiDatabase.DetectBrandFromText($"{cam.Model} {cam.ExtraInfo}");
             }
 
-            // Subnet mismatch check
-            if (localIp != null && subnetMask != null && IPAddress.TryParse(cam.IPAddress, out var camIp))
+            // Clean model name if generic
+            if (cam.Model.EndsWith("Device") && !string.IsNullOrWhiteSpace(cam.ExtraInfo))
             {
-                bool inSubnet = IsInSameSubnet(camIp, localIp, subnetMask);
+                cam.Model = cam.ExtraInfo;
+            }
+
+            // Subnet mismatch check against ALL local machine subnets
+            if (IPAddress.TryParse(cam.IPAddress, out var camIp))
+            {
+                bool inSubnet = localSubnets.Count == 0 || IsInAnyLocalSubnet(camIp, localSubnets);
                 cam.IsSubnetMismatch = !inSubnet;
                 if (!inSubnet)
                 {
                     cam.Status = "Subnet Mismatch";
-                    cam.SubnetMismatchDetails = $"Host: {localIp} / Camera: {cam.IPAddress}";
+                    cam.SubnetMismatchDetails = $"Camera {cam.IPAddress} is in a different subnet than host";
+                }
+                else
+                {
+                    cam.Status = "Online";
                 }
             }
 
@@ -132,7 +144,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     private async Task RunOnvifDiscoveryAsync(
         ConcurrentDictionary<string, DiscoveredCamera> dict,
-        IPAddress? localIp,
+        List<IPAddress> localIps,
         CancellationToken ct)
     {
         const string MulticastAddress = "239.255.255.250";
@@ -159,38 +171,55 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
             """;
 
         byte[] requestBytes = Encoding.UTF8.GetBytes(probeXml);
+        var clients = new List<UdpClient>();
 
-        using var client = new UdpClient();
-        client.EnableBroadcast = true;
-
-        if (localIp != null)
+        try
         {
-            client.Client.Bind(new IPEndPoint(localIp, 0));
-        }
-        else
-        {
-            client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        }
+            var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
 
-        var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
-        await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
-
-        var stopWatch = System.Diagnostics.Stopwatch.StartNew();
-        while (stopWatch.ElapsedMilliseconds < 3000 && !ct.IsCancellationRequested)
-        {
-            if (client.Available > 0)
+            foreach (var ip in localIps)
             {
                 try
                 {
-                    var result = await client.ReceiveAsync(ct);
-                    var response = Encoding.UTF8.GetString(result.Buffer);
-                    ParseOnvifResponse(response, result.RemoteEndPoint.Address.ToString(), dict);
+                    var client = new UdpClient();
+                    client.EnableBroadcast = true;
+                    client.Client.Bind(new IPEndPoint(ip, 0));
+                    clients.Add(client);
+                    await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
                 }
                 catch { }
             }
-            else
+
+            var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+            while (stopWatch.ElapsedMilliseconds < 2800 && !ct.IsCancellationRequested)
             {
-                await Task.Delay(50, ct);
+                bool anyAvailable = false;
+                foreach (var client in clients)
+                {
+                    if (client.Available > 0)
+                    {
+                        anyAvailable = true;
+                        try
+                        {
+                            var result = await client.ReceiveAsync(ct);
+                            var response = Encoding.UTF8.GetString(result.Buffer);
+                            ParseOnvifResponse(response, result.RemoteEndPoint.Address.ToString(), dict);
+                        }
+                        catch { }
+                    }
+                }
+
+                if (!anyAvailable)
+                {
+                    await Task.Delay(40, ct);
+                }
+            }
+        }
+        finally
+        {
+            foreach (var c in clients)
+            {
+                try { c.Dispose(); } catch { }
             }
         }
     }
@@ -211,7 +240,6 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 var ip = senderIp;
                 int port = 80;
 
-                // Extract IP and Port from XAddrs (e.g. http://192.168.1.55:80/onvif/device_service)
                 var urlMatch = Regex.Match(xaddrs, @"https?://(?<host>[^:/]+)(?::(?<port>\d+))?", RegexOptions.IgnoreCase);
                 if (urlMatch.Success)
                 {
@@ -224,7 +252,6 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 string brand = "Generic ONVIF";
                 string extra = string.Empty;
 
-                // Parse Scopes (e.g. onvif://www.onvif.org/hardware/WV-S1536L onvif://www.onvif.org/name/i-PRO...)
                 var scopeParts = scopes.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries);
                 foreach (var s in scopeParts)
                 {
@@ -260,7 +287,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                     {
                         if (existing.Brand == "Unknown" || existing.Brand == "Generic ONVIF")
                             existing.Brand = brand;
-                        if (existing.Model == "IP Camera")
+                        if (existing.Model.Contains("Device") || existing.Model == "IP Camera")
                             existing.Model = model;
                         existing.OnvifPort = port;
                         return existing;
@@ -275,52 +302,63 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     private async Task RunDahuaDiscoveryAsync(
         ConcurrentDictionary<string, DiscoveredCamera> dict,
-        IPAddress? localIp,
+        List<IPAddress> localIps,
         CancellationToken ct)
     {
         const int DahuaPort = 37810;
         var query = "{\"id\":1,\"method\":\"client.search\",\"params\":{\"mac\":\"\"}}\r\n";
         byte[] queryBytes = Encoding.UTF8.GetBytes(query);
+        var clients = new List<UdpClient>();
 
-        using var client = new UdpClient();
-        client.EnableBroadcast = true;
-
-        if (localIp != null)
-        {
-            client.Client.Bind(new IPEndPoint(localIp, 0));
-        }
-        else
-        {
-            client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        }
-
-        var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DahuaPort);
-        await client.SendAsync(queryBytes, queryBytes.Length, broadcastEndpoint);
-
-        // Also try legacy port 38888
         try
         {
+            var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, DahuaPort);
             var legacyEndpoint = new IPEndPoint(IPAddress.Broadcast, 38888);
-            await client.SendAsync(queryBytes, queryBytes.Length, legacyEndpoint);
-        }
-        catch { }
 
-        var stopWatch = System.Diagnostics.Stopwatch.StartNew();
-        while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
-        {
-            if (client.Available > 0)
+            foreach (var ip in localIps)
             {
                 try
                 {
-                    var result = await client.ReceiveAsync(ct);
-                    var json = Encoding.UTF8.GetString(result.Buffer);
-                    ParseDahuaResponse(json, result.RemoteEndPoint.Address.ToString(), dict);
+                    var client = new UdpClient();
+                    client.EnableBroadcast = true;
+                    client.Client.Bind(new IPEndPoint(ip, 0));
+                    clients.Add(client);
+                    await client.SendAsync(queryBytes, queryBytes.Length, broadcastEndpoint);
+                    await client.SendAsync(queryBytes, queryBytes.Length, legacyEndpoint);
                 }
                 catch { }
             }
-            else
+
+            var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+            while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
             {
-                await Task.Delay(40, ct);
+                bool anyAvailable = false;
+                foreach (var client in clients)
+                {
+                    if (client.Available > 0)
+                    {
+                        anyAvailable = true;
+                        try
+                        {
+                            var result = await client.ReceiveAsync(ct);
+                            var json = Encoding.UTF8.GetString(result.Buffer);
+                            ParseDahuaResponse(json, result.RemoteEndPoint.Address.ToString(), dict);
+                        }
+                        catch { }
+                    }
+                }
+
+                if (!anyAvailable)
+                {
+                    await Task.Delay(40, ct);
+                }
+            }
+        }
+        finally
+        {
+            foreach (var c in clients)
+            {
+                try { c.Dispose(); } catch { }
             }
         }
     }
@@ -388,7 +426,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     private async Task RunSsdpDiscoveryAsync(
         ConcurrentDictionary<string, DiscoveredCamera> dict,
-        IPAddress? localIp,
+        List<IPAddress> localIps,
         CancellationToken ct)
     {
         const string MulticastAddress = "239.255.255.250";
@@ -401,38 +439,55 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                         "ST: ssdp:all\r\n\r\n";
 
         byte[] requestBytes = Encoding.UTF8.GetBytes(ssdpQuery);
+        var clients = new List<UdpClient>();
 
-        using var client = new UdpClient();
-        client.EnableBroadcast = true;
-
-        if (localIp != null)
+        try
         {
-            client.Client.Bind(new IPEndPoint(localIp, 0));
-        }
-        else
-        {
-            client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        }
+            var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
 
-        var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
-        await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
-
-        var stopWatch = System.Diagnostics.Stopwatch.StartNew();
-        while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
-        {
-            if (client.Available > 0)
+            foreach (var ip in localIps)
             {
                 try
                 {
-                    var result = await client.ReceiveAsync(ct);
-                    var response = Encoding.UTF8.GetString(result.Buffer);
-                    ParseSsdpResponse(response, result.RemoteEndPoint.Address.ToString(), dict);
+                    var client = new UdpClient();
+                    client.EnableBroadcast = true;
+                    client.Client.Bind(new IPEndPoint(ip, 0));
+                    clients.Add(client);
+                    await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
                 }
                 catch { }
             }
-            else
+
+            var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+            while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
             {
-                await Task.Delay(40, ct);
+                bool anyAvailable = false;
+                foreach (var client in clients)
+                {
+                    if (client.Available > 0)
+                    {
+                        anyAvailable = true;
+                        try
+                        {
+                            var result = await client.ReceiveAsync(ct);
+                            var response = Encoding.UTF8.GetString(result.Buffer);
+                            ParseSsdpResponse(response, result.RemoteEndPoint.Address.ToString(), dict);
+                        }
+                        catch { }
+                    }
+                }
+
+                if (!anyAvailable)
+                {
+                    await Task.Delay(40, ct);
+                }
+            }
+        }
+        finally
+        {
+            foreach (var c in clients)
+            {
+                try { c.Dispose(); } catch { }
             }
         }
     }
@@ -452,7 +507,6 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
             string ip = senderIp;
             int port = 80;
 
-            // Extract location header (e.g. Location: http://192.168.1.45:80/description.xml)
             var locMatch = Regex.Match(text, @"Location:\s*https?://(?<host>[^:/]+)(?::(?<port>\d+))?", RegexOptions.IgnoreCase);
             if (locMatch.Success)
             {
@@ -463,7 +517,6 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
             string brand = CameraOuiDatabase.DetectBrandFromText(text);
             string model = "IP Camera";
 
-            // Extract Server header
             var serverMatch = Regex.Match(text, @"Server:\s*(?<srv>[^\r\n]+)", RegexOptions.IgnoreCase);
             if (serverMatch.Success)
             {
@@ -504,7 +557,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     private async Task RunHikvisionSadpDiscoveryAsync(
         ConcurrentDictionary<string, DiscoveredCamera> dict,
-        IPAddress? localIp,
+        List<IPAddress> localIps,
         CancellationToken ct)
     {
         const string MulticastAddress = "239.255.255.250";
@@ -512,38 +565,55 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
 
         var probeXml = $"<?xml version=\"1.0\" encoding=\"utf-8\"?><Probe><Uuid>{Guid.NewGuid()}</Uuid><Types>inquiry</Types></Probe>";
         byte[] requestBytes = Encoding.UTF8.GetBytes(probeXml);
+        var clients = new List<UdpClient>();
 
-        using var client = new UdpClient();
-        client.EnableBroadcast = true;
-
-        if (localIp != null)
+        try
         {
-            client.Client.Bind(new IPEndPoint(localIp, 0));
-        }
-        else
-        {
-            client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        }
+            var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
 
-        var endpoint = new IPEndPoint(IPAddress.Parse(MulticastAddress), Port);
-        await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
-
-        var stopWatch = System.Diagnostics.Stopwatch.StartNew();
-        while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
-        {
-            if (client.Available > 0)
+            foreach (var ip in localIps)
             {
                 try
                 {
-                    var result = await client.ReceiveAsync(ct);
-                    var xml = Encoding.UTF8.GetString(result.Buffer);
-                    ParseSadpResponse(xml, result.RemoteEndPoint.Address.ToString(), dict);
+                    var client = new UdpClient();
+                    client.EnableBroadcast = true;
+                    client.Client.Bind(new IPEndPoint(ip, 0));
+                    clients.Add(client);
+                    await client.SendAsync(requestBytes, requestBytes.Length, endpoint);
                 }
                 catch { }
             }
-            else
+
+            var stopWatch = System.Diagnostics.Stopwatch.StartNew();
+            while (stopWatch.ElapsedMilliseconds < 2500 && !ct.IsCancellationRequested)
             {
-                await Task.Delay(40, ct);
+                bool anyAvailable = false;
+                foreach (var client in clients)
+                {
+                    if (client.Available > 0)
+                    {
+                        anyAvailable = true;
+                        try
+                        {
+                            var result = await client.ReceiveAsync(ct);
+                            var xml = Encoding.UTF8.GetString(result.Buffer);
+                            ParseSadpResponse(xml, result.RemoteEndPoint.Address.ToString(), dict);
+                        }
+                        catch { }
+                    }
+                }
+
+                if (!anyAvailable)
+                {
+                    await Task.Delay(40, ct);
+                }
+            }
+        }
+        finally
+        {
+            foreach (var c in clients)
+            {
+                try { c.Dispose(); } catch { }
             }
         }
     }
@@ -591,7 +661,6 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     private Task ScanArpCacheForCamerasAsync(
         ConcurrentDictionary<string, DiscoveredCamera> dict,
-        IPAddress? localIp,
         CancellationToken ct)
     {
         return Task.Run(() =>
@@ -634,7 +703,7 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                                         IPAddress = ipStr,
                                         MACAddress = macStr,
                                         Brand = vendor.Brand,
-                                        Model = $"{vendor.Brand} Device",
+                                        Model = $"{vendor.CompanyName} ({vendor.Category})",
                                         Protocol = "ARP / OUI Lookup",
                                         ExtraInfo = $"{vendor.CompanyName} ({vendor.Category})"
                                     },
@@ -643,6 +712,8 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                                         existing.MACAddress = macStr;
                                         if (existing.Brand == "Unknown" || existing.Brand == "Generic ONVIF")
                                             existing.Brand = vendor.Brand;
+                                        if (existing.Model == "IP Camera")
+                                            existing.Model = $"{vendor.CompanyName} ({vendor.Category})";
                                         return existing;
                                     });
                             }
@@ -657,8 +728,9 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
     // =========================================================================
     // HELPER METHODS
     // =========================================================================
-    private static (IPAddress? LocalIp, IPAddress? SubnetMask) ResolveLocalNetwork(string? requestedIp)
+    private static List<(IPAddress Ip, IPAddress Mask)> GetAllLocalSubnets(string? requestedIp)
     {
+        var list = new List<(IPAddress Ip, IPAddress Mask)>();
         try
         {
             foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
@@ -672,9 +744,15 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
                 {
                     if (u.Address.AddressFamily == AddressFamily.InterNetwork)
                     {
-                        if (string.IsNullOrWhiteSpace(requestedIp) || u.Address.ToString() == requestedIp)
+                        var ipStr = u.Address.ToString();
+                        if (string.IsNullOrWhiteSpace(requestedIp))
                         {
-                            return (u.Address, u.IPv4Mask);
+                            if (!ipStr.StartsWith("169.254."))
+                                list.Add((u.Address, u.IPv4Mask));
+                        }
+                        else if (ipStr == requestedIp)
+                        {
+                            list.Add((u.Address, u.IPv4Mask));
                         }
                     }
                 }
@@ -682,7 +760,52 @@ public sealed class CameraDiscoveryService : ICameraDiscoveryService
         }
         catch { }
 
-        return (null, null);
+        return list;
+    }
+
+    private static List<IPAddress> GetActiveLocalIps(string? requestedIp)
+    {
+        var ips = new List<IPAddress>();
+        if (!string.IsNullOrWhiteSpace(requestedIp) && IPAddress.TryParse(requestedIp, out var rIp))
+        {
+            ips.Add(rIp);
+            return ips;
+        }
+
+        try
+        {
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up ||
+                    ni.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    continue;
+
+                var ipProps = ni.GetIPProperties();
+                foreach (var u in ipProps.UnicastAddresses)
+                {
+                    if (u.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        var s = u.Address.ToString();
+                        if (!s.StartsWith("169.254.") && !s.StartsWith("127."))
+                            ips.Add(u.Address);
+                    }
+                }
+            }
+        }
+        catch { }
+
+        if (ips.Count == 0) ips.Add(IPAddress.Any);
+        return ips;
+    }
+
+    private static bool IsInAnyLocalSubnet(IPAddress camIp, List<(IPAddress Ip, IPAddress Mask)> localSubnets)
+    {
+        foreach (var (localIp, mask) in localSubnets)
+        {
+            if (IsInSameSubnet(camIp, localIp, mask))
+                return true;
+        }
+        return false;
     }
 
     private static bool IsInSameSubnet(IPAddress ip1, IPAddress ip2, IPAddress mask)

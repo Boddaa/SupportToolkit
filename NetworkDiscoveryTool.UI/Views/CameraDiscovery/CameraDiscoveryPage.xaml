@@ -128,10 +128,6 @@
                                             </Style>
                                         </TextBlock.Style>
                                     </TextBlock>
-                                    <Button Grid.Column="2" Width="30" Height="30" Background="Transparent" BorderThickness="0" Cursor="Hand" Margin="0,0,4,0"
-                                            Command="{Binding ClearResultsCommand}" Visibility="{Binding SearchText, Converter={StaticResource BooleanNotToVisibilityConverter}}">
-                                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
-                                    </Button>
                                 </Grid>
                             </Border>
                         </StackPanel>
@@ -165,9 +161,10 @@
                             </StackPanel>
                         </Grid>
 
+                        <!-- Progress Bar (Visible during discovery) -->
                         <ProgressBar Grid.Row="1" Height="3" Margin="0,10,0,0" IsIndeterminate="{Binding IsDiscovering}"
                                      Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource CardBgAltBrush}" BorderThickness="0"
-                                     Visibility="{Binding IsDiscovering, Converter={StaticResource BooleanNotToVisibilityConverter}}"/>
+                                     Visibility="{Binding IsDiscovering, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                     </Grid>
                 </Border>
 
@@ -279,59 +276,74 @@
                 <!-- ======================================================== -->
                 <Border Style="{StaticResource NetScopeCard}" Padding="0" MinHeight="360">
                     <Grid>
-                        <!-- DataGrid -->
+                        <!-- Dark / Modern DataGrid -->
                         <DataGrid ItemsSource="{Binding FilteredCameras}"
                                   SelectedItem="{Binding SelectedCamera}"
                                   AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
                                   IsReadOnly="True"
                                   HeadersVisibility="Column"
-                                  GridLinesVisibility="None"
+                                  GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="{DynamicResource SurfaceBorderBrush}"
                                   Background="Transparent"
                                   BorderThickness="0"
-                                  RowHeight="46"
+                                  Style="{StaticResource DGrid}"
+                                  RowHeight="48"
+                                  RowBackground="{DynamicResource CardBgBrush}"
+                                  AlternatingRowBackground="{DynamicResource CardBgAltBrush}"
                                   CanUserSortColumns="True"
                                   CanUserResizeColumns="True"
                                   HorizontalScrollBarVisibility="Auto"
                                   VerticalScrollBarVisibility="Auto">
 
+                            <DataGrid.Resources>
+                                <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}">
+                                    <Setter Property="Padding" Value="14,0"/>
+                                </Style>
+                                <Style TargetType="DataGridCell" BasedOn="{StaticResource DGridCell}">
+                                    <Setter Property="Padding" Value="0"/>
+                                </Style>
+                                <Style TargetType="DataGridRow" BasedOn="{StaticResource DGridRow}"/>
+                            </DataGrid.Resources>
+
                             <DataGrid.Columns>
                                 <!-- 1. Brand & Logo Pill -->
-                                <DataGridTemplateColumn Header="Brand" Width="130">
+                                <DataGridTemplateColumn Header="Brand" Width="140">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border CornerRadius="6" Padding="10,5" Margin="10,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
-                                                        <Setter Property="Background" Value="#150EA5E9"/>
-                                                        <Setter Property="BorderBrush" Value="#350EA5E9"/>
+                                                        <Setter Property="Background" Value="#200EA5E9"/>
+                                                        <Setter Property="BorderBrush" Value="#500EA5E9"/>
                                                         <Setter Property="BorderThickness" Value="1"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Brand}" Value="i-PRO">
-                                                                <Setter Property="Background" Value="#150284C7"/>
-                                                                <Setter Property="BorderBrush" Value="#4038BDF8"/>
+                                                                <Setter Property="Background" Value="#250284C7"/>
+                                                                <Setter Property="BorderBrush" Value="#6038BDF8"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Brand}" Value="Dahua">
-                                                                <Setter Property="Background" Value="#15F97316"/>
-                                                                <Setter Property="BorderBrush" Value="#40F97316"/>
+                                                                <Setter Property="Background" Value="#25F97316"/>
+                                                                <Setter Property="BorderBrush" Value="#60F97316"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Brand}" Value="ARH / LPR">
-                                                                <Setter Property="Background" Value="#15F59E0B"/>
-                                                                <Setter Property="BorderBrush" Value="#40F59E0B"/>
+                                                                <Setter Property="Background" Value="#25F59E0B"/>
+                                                                <Setter Property="BorderBrush" Value="#60F59E0B"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Brand}" Value="Radar / Traffic">
-                                                                <Setter Property="Background" Value="#15EF4444"/>
-                                                                <Setter Property="BorderBrush" Value="#40EF4444"/>
+                                                                <Setter Property="Background" Value="#25EF4444"/>
+                                                                <Setter Property="BorderBrush" Value="#60EF4444"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Brand}" Value="Hikvision">
-                                                                <Setter Property="Background" Value="#15A855F7"/>
-                                                                <Setter Property="BorderBrush" Value="#40A855F7"/>
+                                                                <Setter Property="Background" Value="#25A855F7"/>
+                                                                <Setter Property="BorderBrush" Value="#60A855F7"/>
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                    <TextBlock Text="{Binding Brand}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+                                                    <TextBlock Text="{Binding Brand}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                                                 </StackPanel>
                                             </Border>
                                         </DataTemplate>
@@ -339,12 +351,12 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- 2. Camera Model -->
-                                <DataGridTemplateColumn Header="Model &amp; Hardware" Width="200">
+                                <DataGridTemplateColumn Header="Model &amp; Details" Width="220">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel VerticalAlignment="Center" Margin="4,0">
+                                            <StackPanel VerticalAlignment="Center" Margin="10,0">
                                                 <TextBlock Text="{Binding Model}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                                <TextBlock Text="{Binding ExtraInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" Visibility="{Binding ExtraInfo, Converter={StaticResource BooleanNotToVisibilityConverter}}"/>
+                                                <TextBlock Text="{Binding ExtraInfo}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
@@ -354,11 +366,15 @@
                                 <DataGridTemplateColumn Header="IP Address" Width="170">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel VerticalAlignment="Center" Margin="4,0">
-                                                <TextBlock Text="{Binding IPAddress}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                                                <Border Visibility="{Binding IsSubnetMismatch, Converter={StaticResource BooleanNotToVisibilityConverter}}"
-                                                        Background="#20EF4444" CornerRadius="4" Padding="4,1" Margin="0,2,0,0" HorizontalAlignment="Left">
-                                                    <TextBlock Text="⚠️ Subnet Mismatch" FontSize="9" FontWeight="SemiBold" Foreground="#EF4444"/>
+                                            <StackPanel VerticalAlignment="Center" Margin="10,0">
+                                                <TextBlock Text="{Binding IPAddress}" FontSize="13" FontWeight="Bold" Foreground="#38BDF8"/>
+                                                <Border Visibility="{Binding IsSubnetMismatch, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                        Background="#25EF4444" BorderBrush="#50EF4444" BorderThickness="1"
+                                                        CornerRadius="4" Padding="6,2" Margin="0,3,0,0" HorizontalAlignment="Left">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="⚠️" FontSize="10" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="Subnet Mismatch" FontSize="9" FontWeight="SemiBold" Foreground="#EF4444"/>
+                                                    </StackPanel>
                                                 </Border>
                                             </StackPanel>
                                         </DataTemplate>
@@ -366,30 +382,32 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- 4. MAC Address -->
-                                <DataGridTemplateColumn Header="MAC Address" Width="160">
+                                <DataGridTemplateColumn Header="MAC Address" Width="170">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding MACAddress, FallbackValue='Resolving...'}" FontSize="11" FontFamily="Consolas" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                                            <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                <TextBlock Text="{Binding MACAddress}" FontSize="12" FontFamily="Consolas, Cascadia Code" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
                                 <!-- 5. Protocol -->
-                                <DataGridTemplateColumn Header="Discovery Protocol" Width="140">
+                                <DataGridTemplateColumn Header="Discovery Protocol" Width="150">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="6,3" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Protocol}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                            <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
+                                                <TextBlock Text="{Binding Protocol}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                             </Border>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
                                 <!-- 6. Status -->
-                                <DataGridTemplateColumn Header="Status" Width="120">
+                                <DataGridTemplateColumn Header="Status" Width="110">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
                                                 <Ellipse Width="7" Height="7" Fill="#10B981" Margin="0,0,6,0"/>
                                                 <TextBlock Text="{Binding Status}" FontSize="11" FontWeight="SemiBold" Foreground="#10B981"/>
                                             </StackPanel>
@@ -401,39 +419,39 @@
                                 <DataGridTemplateColumn Header="Actions" Width="*">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
                                                 <!-- Open Web UI -->
                                                 <Button Command="{Binding DataContext.OpenWebUiCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="8,0" Margin="0,0,6,0" ToolTip="Open Camera Web Interface">
+                                                        Style="{StaticResource BtnSecondary}" Height="30" Padding="10,0" Margin="0,0,6,0" ToolTip="Open Camera Web Interface">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="Web" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="Web" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
 
                                                 <!-- Copy RTSP -->
                                                 <Button Command="{Binding DataContext.CopyRtspCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="8,0" Margin="0,0,6,0" ToolTip="Copy RTSP Stream URL">
+                                                        Style="{StaticResource BtnSecondary}" Height="30" Padding="10,0" Margin="0,0,6,0" ToolTip="Copy RTSP Stream URL">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="RTSP" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="RTSP" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
 
                                                 <!-- Copy IP -->
                                                 <Button Command="{Binding DataContext.CopyIpCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnGhost}" Height="28" Width="28" Margin="0,0,4,0" ToolTip="Copy IP Address">
-                                                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        Style="{StaticResource BtnGhost}" Height="30" Width="30" Margin="0,0,4,0" ToolTip="Copy IP Address">
+                                                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
                                                 </Button>
 
                                                 <!-- Copy MAC -->
                                                 <Button Command="{Binding DataContext.CopyMacCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnGhost}" Height="28" Width="28" ToolTip="Copy MAC Address">
-                                                    <TextBlock Text="&#xE772;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        Style="{StaticResource BtnGhost}" Height="30" Width="30" ToolTip="Copy MAC Address">
+                                                    <TextBlock Text="&#xE772;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>
@@ -442,8 +460,12 @@
                             </DataGrid.Columns>
                         </DataGrid>
 
-                        <!-- Empty State Overlay -->
-                        <Border Background="{DynamicResource PageBgBrush}" Visibility="{Binding HasNoResults, Converter={StaticResource BooleanNotToVisibilityConverter}}"
+                        <!-- Empty State Overlay (Visible ONLY when HasNoResults is true) -->
+                        <Border Background="{DynamicResource CardBgBrush}"
+                                BorderBrush="{DynamicResource CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Visibility="{Binding HasNoResults, Converter={StaticResource BooleanToVisibilityConverter}}"
                                 Padding="40" HorizontalAlignment="Center" VerticalAlignment="Center">
                             <StackPanel HorizontalAlignment="Center">
                                 <Border Width="64" Height="64" CornerRadius="16" Background="#100EA5E9" BorderBrush="#250EA5E9" BorderThickness="1" HorizontalAlignment="Center" Margin="0,0,0,16">

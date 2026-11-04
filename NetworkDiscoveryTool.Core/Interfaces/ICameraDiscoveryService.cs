@@ -13,3 +13,4 @@ public interface ICameraDiscoveryService
         IProgress<string>? statusProgress = null,
         CancellationToken ct = default);
 }
+

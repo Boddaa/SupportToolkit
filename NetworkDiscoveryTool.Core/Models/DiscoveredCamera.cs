@@ -22,3 +22,4 @@ public sealed class DiscoveredCamera
     public string? ExtraInfo { get; set; }
     public DateTime DiscoveredAt { get; set; } = DateTime.UtcNow;
 }
+
