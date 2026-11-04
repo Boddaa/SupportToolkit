@@ -289,8 +289,7 @@
                                   BorderThickness="0"
                                   Style="{StaticResource DGrid}"
                                   RowHeight="48"
-                                  RowBackground="{DynamicResource CardBgBrush}"
-                                  AlternatingRowBackground="{DynamicResource CardBgAltBrush}"
+                                  AlternationCount="2"
                                   CanUserSortColumns="True"
                                   CanUserResizeColumns="True"
                                   HorizontalScrollBarVisibility="Auto"
@@ -300,10 +299,60 @@
                                 <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DGridColHeader}">
                                     <Setter Property="Padding" Value="14,0"/>
                                 </Style>
-                                <Style TargetType="DataGridCell" BasedOn="{StaticResource DGridCell}">
+
+                                <!-- Transparent Cell Style: Prevents jarring per-cell selection blocks -->
+                                <Style TargetType="DataGridCell">
                                     <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="DataGridCell">
+                                                <Border Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        SnapsToDevicePixels="True">
+                                                    <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
                                 </Style>
-                                <Style TargetType="DataGridRow" BasedOn="{StaticResource DGridRow}"/>
+
+                                <!-- Unified Row Style: Smooth dark slate hover & deep navy selection across all columns -->
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceBorderBrush}"/>
+                                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                    <Setter Property="UseLayoutRounding" Value="True"/>
+                                    <Style.Triggers>
+                                        <!-- Alternating row background -->
+                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                            <Setter Property="Background" Value="{DynamicResource CardBgAltBrush}"/>
+                                        </Trigger>
+                                        <!-- Sleek dark hover -->
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#1A2D47"/>
+                                        </Trigger>
+                                        <!-- Refined deep navy selection highlight -->
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#1E3A5F"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
                             </DataGrid.Resources>
 
                             <DataGrid.Columns>
@@ -385,7 +434,7 @@
                                 <DataGridTemplateColumn Header="MAC Address" Width="170">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
+                                            <Border Background="#121E33" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
                                                 <TextBlock Text="{Binding MACAddress}" FontSize="12" FontFamily="Consolas, Cascadia Code" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                             </Border>
                                         </DataTemplate>
@@ -396,7 +445,7 @@
                                 <DataGridTemplateColumn Header="Discovery Protocol" Width="150">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Border Background="{DynamicResource CardBgAltBrush}" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
+                                            <Border Background="#121E33" BorderBrush="{DynamicResource SurfaceBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
                                                 <TextBlock Text="{Binding Protocol}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"/>
                                             </Border>
                                         </DataTemplate>
@@ -416,16 +465,16 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- 7. Quick Actions -->
-                                <DataGridTemplateColumn Header="Actions" Width="*">
+                                <DataGridTemplateColumn Header="Actions" Width="*" MinWidth="300">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
                                                 <!-- Open Web UI -->
                                                 <Button Command="{Binding DataContext.OpenWebUiCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnSecondary}" Height="30" Padding="10,0" Margin="0,0,6,0" ToolTip="Open Camera Web Interface">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="10,0" Margin="0,0,6,0" ToolTip="Open Camera Web Interface">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                                         <TextBlock Text="Web" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
@@ -433,9 +482,9 @@
                                                 <!-- Copy RTSP -->
                                                 <Button Command="{Binding DataContext.CopyRtspCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnSecondary}" Height="30" Padding="10,0" Margin="0,0,6,0" ToolTip="Copy RTSP Stream URL">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="10,0" Margin="0,0,6,0" ToolTip="Copy RTSP Stream URL">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="&#xE714;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                                         <TextBlock Text="RTSP" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </Button>
@@ -443,15 +492,21 @@
                                                 <!-- Copy IP -->
                                                 <Button Command="{Binding DataContext.CopyIpCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnGhost}" Height="30" Width="30" Margin="0,0,4,0" ToolTip="Copy IP Address">
-                                                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="9,0" Margin="0,0,6,0" ToolTip="Copy IP Address">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="IP" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
                                                 </Button>
 
                                                 <!-- Copy MAC -->
                                                 <Button Command="{Binding DataContext.CopyMacCommand, RelativeSource={RelativeSource AncestorType=Page}}"
                                                         CommandParameter="{Binding}"
-                                                        Style="{StaticResource BtnGhost}" Height="30" Width="30" ToolTip="Copy MAC Address">
-                                                    <TextBlock Text="&#xE772;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        Style="{StaticResource BtnSecondary}" Height="28" Padding="9,0" ToolTip="Copy MAC Address">
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="MAC" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
                                                 </Button>
                                             </StackPanel>
                                         </DataTemplate>
