@@ -223,6 +223,17 @@ public partial class App : System.Windows.Application
 
             telegramService.BotToken = dbToken;
             telegramService.AdminChatId = dbChatId;
+
+            var cloudAuth = themeScope.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.Services.Services.CloudAuthService>();
+            var savedServerUrl = settingsService.GetAsync("CloudServerUrl").GetAwaiter().GetResult();
+            if (!string.IsNullOrWhiteSpace(savedServerUrl))
+            {
+                cloudAuth.ServerBaseUrl = savedServerUrl;
+            }
+            else
+            {
+                settingsService.SetAsync("CloudServerUrl", "http://supporttoolkit.runasp.net").GetAwaiter().GetResult();
+            }
         }
         catch
         {

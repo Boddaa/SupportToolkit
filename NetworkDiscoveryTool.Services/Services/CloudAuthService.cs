@@ -10,7 +10,7 @@ public sealed class CloudAuthService
 {
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(8) };
     
-    public string ServerBaseUrl { get; set; } = "http://localhost:5000";
+    public string ServerBaseUrl { get; set; } = "http://supporttoolkit.runasp.net";
 
     public sealed record CloudAuthResult(
         bool Success,
