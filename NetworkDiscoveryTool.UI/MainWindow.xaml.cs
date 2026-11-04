@@ -1,12 +1,15 @@
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Navigation;
 using Microsoft.Extensions.DependencyInjection;
 using NetworkDiscoveryTool.UI.Services;
 using NetworkDiscoveryTool.UI.ViewModels;
+using NetworkDiscoveryTool.UI.Views.CameraDiscovery;
 using NetworkDiscoveryTool.UI.Views.Dashboard;
 using NetworkDiscoveryTool.UI.Views.DeviceDetails;
 using NetworkDiscoveryTool.UI.Views.IisMonitor;
@@ -37,66 +40,41 @@ public partial class MainWindow : Window
         CurrentUserService currentUser)
     {
         InitializeComponent();
-
         _navigation = navigation;
         _dashboardVm = dashboardVm;
         _currentUser = currentUser;
 
-        DataContext = dashboardVm;
-        navigation.SetFrame(MainFrame);
+        _navigation.SetFrame(MainFrame);
 
         MainFrame.Navigated += OnMainFrameNavigated;
 
-        UpdateUserDisplay(currentUser.Username, currentUser.Role);
-        _currentUser.UserChanged += () => UpdateUserDisplay(_currentUser.Username, _currentUser.Role);
-
-        MainFrame.Content = new DashboardPage(dashboardVm);
-        Closed += (_, _) => System.Windows.Application.Current.Shutdown();
-
-        SourceInitialized += (s, e) =>
-        {
-            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            var source = System.Windows.Interop.HwndSource.FromHwnd(handle);
-            source?.AddHook(WndProc);
-        };
+        DataContext = _dashboardVm;
 
         Loaded += (_, _) =>
         {
-            var workArea = SystemParameters.WorkArea;
-            // Adapt window size dynamically to the user's monitor work area
-            if (workArea.Width > 0 && workArea.Height > 0)
-            {
-                if (workArea.Width < Width || workArea.Height < Height)
-                {
-                    Width = Math.Max(MinWidth, Math.Min(1280, workArea.Width * 0.94));
-                    Height = Math.Max(MinHeight, Math.Min(780, workArea.Height * 0.92));
-                    Left = Math.Max(0, (workArea.Width - Width) / 2 + workArea.Left);
-                    Top = Math.Max(0, (workArea.Height - Height) / 2 + workArea.Top);
-                }
-
-                _prevWidth = Width;
-                _prevHeight = Height;
-                _prevLeft = Left;
-                _prevTop = Top;
-
-                // Automatically collapse sidebar on smaller displays to maximize working space
-                if (workArea.Width < 1280 && !_isSidebarCollapsed)
-                {
-                    ToggleSidebar(this, new RoutedEventArgs());
-                }
-            }
+            _navigation.NavigateToDashboard();
+            UpdateUserDisplay(_currentUser.Username, _currentUser.Role);
         };
     }
 
-    private double _prevWidth = 1280;
-    private double _prevHeight = 780;
-    private double _prevLeft = 80;
-    private double _prevTop = 80;
-    private bool _isExplicitMaximized = false;
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTCLIENT = 1;
+    private double _prevLeft;
+    private double _prevTop;
+    private double _prevWidth;
+    private double _prevHeight;
+    private bool _isExplicitMaximized;
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        var handle = new WindowInteropHelper(this).Handle;
+        var source = HwndSource.FromHwnd(handle);
+        source?.AddHook(WndProc);
+    }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        const int WM_NCHITTEST = 0x0084;
         if (msg == WM_NCHITTEST)
         {
             if (WindowState == WindowState.Maximized || _isExplicitMaximized)
@@ -140,6 +118,7 @@ public partial class MainWindow : Window
 
         BtnDashboard.Style = defaultStyle;
         BtnNetworkDiscovery.Style = defaultStyle;
+        BtnCameraDiscovery.Style = defaultStyle;
         BtnLiveTopology.Style = defaultStyle;
         BtnPortChecker.Style = defaultStyle;
         BtnPingTool.Style = defaultStyle;
@@ -154,6 +133,8 @@ public partial class MainWindow : Window
             BtnDashboard.Style = activeStyle;
         else if (content is ScanPage)
             BtnNetworkDiscovery.Style = activeStyle;
+        else if (content is CameraDiscoveryPage)
+            BtnCameraDiscovery.Style = activeStyle;
         else if (content is NetworkDiscoveryTool.UI.Views.Topology.TopologyPage)
             BtnLiveTopology.Style = activeStyle;
         else if (content is PortCheckerPage)
@@ -181,6 +162,7 @@ public partial class MainWindow : Window
 
     private void NavigateToDashboard(object sender, RoutedEventArgs e) => _navigation.NavigateToDashboard();
     private void NavigateToNetworkDiscovery(object sender, RoutedEventArgs e) => _navigation.NavigateToNetworkDiscovery();
+    private void NavigateToCameraDiscovery(object sender, RoutedEventArgs e) => _navigation.NavigateToCameraDiscovery();
     private void NavigateToLiveTopology(object sender, RoutedEventArgs e) => _navigation.NavigateToLiveTopology();
     private void NavigateToPingTool(object sender, RoutedEventArgs e) => _navigation.NavigateToPingTool();
     private void NavigateToPortChecker(object sender, RoutedEventArgs e) => _navigation.NavigateToPortChecker();
@@ -214,7 +196,7 @@ public partial class MainWindow : Window
             SidebarPanel.Width = targetWidth;
 
             var labels = new[] {
-                NavLabel, LblDashboard, LblNetworkDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
+                NavLabel, LblDashboard, LblNetworkDiscovery, LblCameraDiscovery, LblLiveTopology, LblPingTool, LblPortChecker,
                 LblSystemInfo, LblWindowsServices, LblSqlTester, LblIisMonitor,
                 LblLogCollector, LblScreenshot, LblSettings, LblLogout
             };
@@ -238,6 +220,7 @@ public partial class MainWindow : Window
         var navButtons = new[] {
             (BtnDashboard, "Dashboard"),
             (BtnNetworkDiscovery, "Network Discovery"),
+            (BtnCameraDiscovery, "Camera Radar"),
             (BtnLiveTopology, "Live Topology"),
             (BtnPingTool, "Ping Tool"),
             (BtnPortChecker, "Port Checker"),

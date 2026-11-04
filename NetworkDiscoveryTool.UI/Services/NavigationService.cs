@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
+using NetworkDiscoveryTool.UI.Views.CameraDiscovery;
 using NetworkDiscoveryTool.UI.Views.Dashboard;
 using NetworkDiscoveryTool.UI.Views.IisMonitor;
 using NetworkDiscoveryTool.UI.Views.LogCollector;
@@ -45,6 +46,7 @@ public class NavigationService : INavigationService
     }
 
     public void NavigateToDashboard() => Navigate(GetPage<DashboardPage>());
+    public void NavigateToCameraDiscovery() => Navigate(GetPage<CameraDiscoveryPage>());
     public void NavigateToNetworkDiscovery() => Navigate(GetPage<ScanPage>());
     public void NavigateToLiveTopology() => Navigate(GetPage<TopologyPage>());
     public void NavigateToPingTool() => Navigate(GetPage<PingToolPage>());
@@ -74,17 +76,9 @@ public class NavigationService : INavigationService
 
     private void Navigate(Page page)
     {
-        try
-        {
-            if (_frame == null)
-                throw new InvalidOperationException("Frame not set. Call SetFrame first.");
-            _frame.Content = page;
-        }
-        catch (Exception ex)
-        {
-            var msg = $"Navigation error: {ex.Message}\n\n{ex}";
-            try { System.IO.File.AppendAllText("crash.log", $"{DateTime.Now}: {msg}\r\n"); } catch { }
-            System.Windows.MessageBox.Show(msg, "Navigation Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        if (_frame is null)
+            throw new InvalidOperationException("Frame has not been initialized. Call SetFrame first.");
+
+        _frame.Navigate(page);
     }
 }
