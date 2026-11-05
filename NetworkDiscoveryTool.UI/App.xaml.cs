@@ -81,7 +81,20 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         const string mutexName = @"Global\SupportToolKit_SingleInstance_App_Mutex_2026";
-        _singleInstanceMutex = new System.Threading.Mutex(true, mutexName, out bool isNewInstance);
+        bool isNewInstance;
+        try
+        {
+            _singleInstanceMutex = new System.Threading.Mutex(true, mutexName, out isNewInstance);
+        }
+        catch (System.Threading.AbandonedMutexException)
+        {
+            isNewInstance = true;
+        }
+        catch
+        {
+            isNewInstance = true;
+        }
+
         if (!isNewInstance)
         {
             BringExistingWindowToFront();
@@ -358,6 +371,13 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        try
+        {
+            _singleInstanceMutex?.ReleaseMutex();
+            _singleInstanceMutex?.Dispose();
+            _singleInstanceMutex = null;
+        }
+        catch { }
         Log.CloseAndFlush();
         base.OnExit(e);
     }

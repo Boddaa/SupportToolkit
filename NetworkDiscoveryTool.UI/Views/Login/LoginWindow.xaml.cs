@@ -1,4 +1,6 @@
-﻿using System.Windows;
+using System;
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +12,7 @@ namespace NetworkDiscoveryTool.UI.Views.Login;
 public partial class LoginWindow : Window
 {
     private readonly LoginViewModel _vm;
+    private bool _loginSucceeded = false;
 
     public LoginWindow(LoginViewModel viewModel)
     {
@@ -19,35 +22,48 @@ public partial class LoginWindow : Window
 
         viewModel.OnLoginSuccess = () =>
         {
-            try
+            Dispatcher.Invoke(() =>
             {
-                var currentUser = App.ServiceProvider.GetRequiredService<CurrentUserService>();
+                try
+                {
+                    _loginSucceeded = true;
+                    var currentUser = App.ServiceProvider.GetRequiredService<CurrentUserService>();
 
-                if (Owner is MainWindow existingMain)
-                {
-                    existingMain.RestoreSession();
-                    existingMain.Show();
-                    DialogResult = true;
+                    if (Owner is MainWindow existingMain)
+                    {
+                        existingMain.RestoreSession();
+                        existingMain.Show();
+                        DialogResult = true;
+                    }
+                    else
+                    {
+                        var mainWindow = App.ServiceProvider.GetRequiredService<MainWindow>();
+                        App.Current.MainWindow = mainWindow;
+                        mainWindow.Show();
+                    }
+                    Close();
                 }
-                else
+                catch (Exception ex)
                 {
-                    var mainWindow = App.ServiceProvider.GetRequiredService<MainWindow>();
-                    App.Current.MainWindow = mainWindow;
-                    mainWindow.Show();
+                    _loginSucceeded = false;
+                    System.Windows.MessageBox.Show($"Failed to open main window: {ex.Message}\n\n{ex.InnerException?.Message}",
+                        "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-                Close();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"Failed to open main window: {ex.Message}\n\n{ex.InnerException?.Message}",
-                    "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            });
         };
 
         Closed += (_, _) =>
         {
-            if (Owner is MainWindow { IsVisible: false })
-                System.Windows.Application.Current.Shutdown();
+            if (!_loginSucceeded)
+            {
+                if (System.Windows.Application.Current.MainWindow == null ||
+                    !System.Windows.Application.Current.MainWindow.IsVisible ||
+                    System.Windows.Application.Current.MainWindow == this)
+                {
+                    try { System.Windows.Application.Current.Shutdown(); } catch { }
+                    Environment.Exit(0);
+                }
+            }
         };
 
         Loaded += OnLoaded;
@@ -58,31 +74,6 @@ public partial class LoginWindow : Window
         var fadeIn = (Storyboard)FindResource("CardFadeIn");
         fadeIn.Begin();
 
-        var logoPulse = (Storyboard)FindResource("LogoPulse");
-        logoPulse.Begin();
-
-        var float1 = (Storyboard)FindResource("FloatBlob1");
-        float1.Begin();
-        var float2 = (Storyboard)FindResource("FloatBlob2");
-        float2.Begin();
-        var float3 = (Storyboard)FindResource("FloatBlob3");
-        float3.Begin();
-
-        await _vm.LoadRememberedProfileAsync();
-
-        _vm.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(LoginViewModel.HasError) && _vm.HasError)
-            {
-                var shake = (Storyboard)FindResource("ErrorShake");
-                ErrorBorder.BeginStoryboard(shake);
-            }
-            if (args.PropertyName == nameof(LoginViewModel.IsLoading))
-            {
-                BtnText.Visibility = _vm.IsLoading ? Visibility.Collapsed : Visibility.Visible;
-            }
-        };
-
         await Dispatcher.InvokeAsync(() =>
         {
             if (!_vm.HasRememberedProfile || _vm.ShowManualLogin)
@@ -92,9 +83,18 @@ public partial class LoginWindow : Window
         }, System.Windows.Threading.DispatcherPriority.Input);
     }
 
+    private void WindowDrag_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
+            try { DragMove(); } catch { }
+        }
+    }
+
     private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        _vm.Password = PasswordBox.Password;
+        if (!_vm.ShowPassword)
+            _vm.Password = PasswordBox.Password;
     }
 
     private void PasswordRevealBox_TextChanged(object sender, RoutedEventArgs e)
@@ -113,43 +113,31 @@ public partial class LoginWindow : Window
             PasswordBox.Visibility = Visibility.Collapsed;
             PasswordRevealBox.Visibility = Visibility.Visible;
             PasswordRevealBox.Focus();
-            PasswordRevealBox.CaretIndex = PasswordRevealBox.Text.Length;
         }
         else
         {
             PasswordBox.Password = PasswordRevealBox.Text;
-            PasswordBox.Visibility = Visibility.Visible;
             PasswordRevealBox.Visibility = Visibility.Collapsed;
+            PasswordBox.Visibility = Visibility.Visible;
             PasswordBox.Focus();
         }
-    }
-
-    private void RegisterPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        _vm.RegisterPassword = RegisterPasswordBox.Password;
-    }
-
-    private void RegisterConfirmPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        _vm.RegisterConfirmPassword = RegisterConfirmPasswordBox.Password;
     }
 
     private void RememberMe_MouseDown(object sender, MouseButtonEventArgs e)
     {
         _vm.RememberMe = !_vm.RememberMe;
-        CheckMark.Visibility = _vm.RememberMe ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void WindowDrag_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void RegisterPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed)
-        {
-            try
-            {
-                DragMove();
-            }
-            catch { }
-        }
+        if (sender is PasswordBox pb)
+            _vm.RegisterPassword = pb.Password;
+    }
+
+    private void RegisterConfirmPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is PasswordBox pb)
+            _vm.RegisterConfirmPassword = pb.Password;
     }
 
     private void MinimizeBtn_Click(object sender, RoutedEventArgs e)

@@ -50,6 +50,11 @@ public class ServerUser
 
     [MaxLength(500)]
     public string? Notes { get; set; }
+
+    // Multi-Device / Family Subscription Support
+    public int MaxDevices { get; set; } = 3;
+
+    public int? ParentUserId { get; set; }
 }
 
 public class DeviceRegistration
@@ -74,6 +79,25 @@ public class DeviceRegistration
     public string? BlockReason { get; set; }
 
     public DateTime? LastSeenAt { get; set; }
+}
+
+public class UserDevice
+{
+    public int Id { get; set; }
+
+    public int UserId { get; set; }
+
+    [MaxLength(100)]
+    public string HardwareId { get; set; } = string.Empty;
+
+    [MaxLength(100)]
+    public string MachineName { get; set; } = string.Empty;
+
+    public DateTime BoundAt { get; set; } = DateTime.UtcNow;
+
+    public DateTime LastUsedAt { get; set; } = DateTime.UtcNow;
+
+    public bool IsActive { get; set; } = true;
 }
 
 public class AuditLog
@@ -126,3 +150,14 @@ public sealed record BlockDeviceRequest(
     string? Reason = null
 );
 
+public sealed record CreateFamilyMemberRequest(
+    int ParentUserId,
+    string Username,
+    string Password,
+    string? Email
+);
+
+public sealed record UnlinkDeviceRequest(
+    int UserId,
+    string HardwareId
+);

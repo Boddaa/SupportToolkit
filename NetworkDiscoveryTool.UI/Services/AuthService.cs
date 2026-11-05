@@ -96,6 +96,13 @@ public sealed class AuthService
                 // Explicit rejection from Cloud (License expired or Device blocked)
                 return (false, null, cloudRes.Message);
             }
+            else if (!string.IsNullOrWhiteSpace(cloudRes.Message) &&
+                     !cloudRes.Message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) &&
+                     !cloudRes.Message.Contains("connection error", StringComparison.OrdinalIgnoreCase))
+            {
+                // Server responded with explicit failure (e.g. wrong password)
+                return (false, null, cloudRes.Message);
+            }
         }
         catch (Exception ex)
         {
@@ -221,7 +228,14 @@ public sealed class AuthService
             }
             else if (cloudRes.Status == "Expired" ||
                      cloudRes.Message.Contains("already used its 1-day free trial", StringComparison.OrdinalIgnoreCase) ||
-                     cloudRes.Message.Contains("already registered", StringComparison.OrdinalIgnoreCase))
+                     cloudRes.Message.Contains("already registered", StringComparison.OrdinalIgnoreCase) ||
+                     cloudRes.Message.Contains("blocked", StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, cloudRes.Message, cloudRes.Status);
+            }
+            else if (!string.IsNullOrWhiteSpace(cloudRes.Message) &&
+                     !cloudRes.Message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) &&
+                     !cloudRes.Message.Contains("connection error", StringComparison.OrdinalIgnoreCase))
             {
                 return (false, cloudRes.Message, cloudRes.Status);
             }

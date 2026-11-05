@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -250,7 +250,8 @@ public sealed partial class LoginViewModel : ObservableObject
 
             await Task.Delay(350);
 
-            if (!_auth.ValidateUser(Username, Password, out var user, out var authError))
+            var (success, user, authError) = await _auth.ValidateUserAsync(Username, Password);
+            if (!success)
             {
                 if (authError != null && authError.Contains("pending", StringComparison.OrdinalIgnoreCase))
                 {
@@ -308,7 +309,7 @@ public sealed partial class LoginViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Register()
+    private async Task Register()
     {
         RegisterMessage = string.Empty;
         IsRegisterSuccess = false;
@@ -325,22 +326,45 @@ public sealed partial class LoginViewModel : ObservableObject
             return;
         }
 
-        var (success, message) = _auth.Register(RegisterUsername, RegisterPassword, RegisterEmail);
-        RegisterMessage = message;
-        IsRegisterSuccess = success;
-
-        if (success)
+        IsLoading = true;
+        try
         {
-            var regUser = RegisterUsername;
+            var regUser = RegisterUsername.Trim();
             var regPass = RegisterPassword;
 
-            RegisterUsername = string.Empty;
-            RegisterPassword = string.Empty;
-            RegisterConfirmPassword = string.Empty;
-            RegisterEmail = string.Empty;
+            var (success, message, status) = await _auth.RegisterAsync(regUser, regPass, RegisterEmail);
+            RegisterMessage = message;
+            IsRegisterSuccess = success;
 
-            ShowRegister = false;
-            StartWaitingForApproval(regUser, regPass);
+            if (success)
+            {
+                RegisterUsername = string.Empty;
+                RegisterPassword = string.Empty;
+                RegisterConfirmPassword = string.Empty;
+                RegisterEmail = string.Empty;
+
+                ShowRegister = false;
+                if (string.Equals(status, "Trial", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(status, "Subscribed", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase))
+                {
+                    Username = regUser;
+                    Password = regPass;
+                    await Login();
+                }
+                else
+                {
+                    StartWaitingForApproval(regUser, regPass);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            RegisterMessage = $"Registration error: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
         }
     }
 
