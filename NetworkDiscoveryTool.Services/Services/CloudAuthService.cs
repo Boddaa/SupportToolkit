@@ -48,10 +48,10 @@ public sealed class CloudAuthService
         {
             var hwid = HardwareIdService.GetHardwareId();
             var url = $"{ServerBaseUrl.TrimEnd('/')}/api/device/check";
-            var response = await HttpClient.PostAsJsonAsync(url, new DeviceCheckPayload(hwid));
+            var response = await HttpClient.PostAsJsonAsync(url, new DeviceCheckPayload(hwid)).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
-                var doc = await response.Content.ReadFromJsonAsync<JsonElement>();
+                var doc = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
                 return new DeviceCheckResult(
                     IsKnown: doc.TryGetProperty("isKnown", out var ik) && ik.GetBoolean(),
                     CanStartTrial: doc.TryGetProperty("canStartTrial", out var cst) && cst.GetBoolean(),
@@ -77,8 +77,8 @@ public sealed class CloudAuthService
             var url = $"{ServerBaseUrl.TrimEnd('/')}/api/auth/register";
             var payload = new RegisterPayload(username, password, email, hwid, Environment.MachineName);
 
-            var response = await HttpClient.PostAsJsonAsync(url, payload);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await HttpClient.PostAsJsonAsync(url, payload).ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
@@ -105,8 +105,8 @@ public sealed class CloudAuthService
             var url = $"{ServerBaseUrl.TrimEnd('/')}/api/auth/login";
             var payload = new LoginPayload(username, password, hwid, Environment.MachineName);
 
-            var response = await HttpClient.PostAsJsonAsync(url, payload);
-            var json = await response.Content.ReadAsStringAsync();
+            var response = await HttpClient.PostAsJsonAsync(url, payload).ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
@@ -125,4 +125,3 @@ public sealed class CloudAuthService
         }
     }
 }
-

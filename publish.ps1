@@ -2,6 +2,8 @@ param(
     [string]$OutputPath = "$PSScriptRoot\publish"
 )
 
+Set-Location $PSScriptRoot
+
 Write-Host "========================================================" -ForegroundColor Cyan
 Write-Host "       SupportToolKit - Clean & Full Publish Pipeline   " -ForegroundColor Cyan
 Write-Host "========================================================" -ForegroundColor Cyan
@@ -84,6 +86,11 @@ if (Test-Path $installerBat) {
 $innoIss = Join-Path $PSScriptRoot "installer\SupportToolKit_InnoSetup.iss"
 if (Test-Path $innoIss) {
     Copy-Item $innoIss -Destination (Join-Path $OutputPath "SupportToolKit_InnoSetup.iss") -Force
+}
+
+$appSettings = Join-Path $PSScriptRoot "NetworkDiscoveryTool.UI\appsettings.json"
+if (Test-Path $appSettings) {
+    Copy-Item $appSettings -Destination (Join-Path $OutputPath "appsettings.json") -Force
 }
 
 # Final sweep of runtime files

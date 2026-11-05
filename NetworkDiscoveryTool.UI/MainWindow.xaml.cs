@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -281,7 +281,7 @@ public partial class MainWindow : Window
     public void UpdateUserDisplay(string username, string role)
     {
         UserDisplay.Text = username;
-        RoleDisplay.Text = $"{role} � {_currentUser.SubscriptionBadgeText}";
+        RoleDisplay.Text = $"{role} • {_currentUser.SubscriptionBadgeText}";
         UserAvatar.Text = username.FirstOrDefault('U').ToString();
     }
 
@@ -494,7 +494,7 @@ public partial class MainWindow : Window
                 if (!string.IsNullOrWhiteSpace(d.Vendor)) subtitleParts.Add(d.Vendor);
                 if (!string.IsNullOrWhiteSpace(d.MAC)) subtitleParts.Add(d.MAC);
                 if (!string.IsNullOrWhiteSpace(d.OS)) subtitleParts.Add(d.OS);
-                var sub = subtitleParts.Count > 0 ? string.Join("  •  ", subtitleParts) : "Discovered Network Asset";
+                var sub = subtitleParts.Count > 0 ? string.Join("  â€¢  ", subtitleParts) : "Discovered Network Asset";
 
                 var targetIp = d.IP;
                 var targetId = d.Id;
@@ -708,7 +708,24 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CloseWindow(object sender, RoutedEventArgs e) => Close();
+        private void CloseWindow(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        try
+        {
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch { }
+        finally
+        {
+            Environment.Exit(0);
+        }
+    }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

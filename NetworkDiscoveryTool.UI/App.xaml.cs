@@ -32,6 +32,34 @@ namespace NetworkDiscoveryTool.UI;
 
 public partial class App : System.Windows.Application
 {
+    private static System.Threading.Mutex? _singleInstanceMutex;
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    private const int SW_RESTORE = 9;
+
+    private static void BringExistingWindowToFront()
+    {
+        try
+        {
+            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+            var processes = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName);
+            foreach (var p in processes)
+            {
+                if (p.Id != currentProcess.Id && p.MainWindowHandle != IntPtr.Zero)
+                {
+                    ShowWindow(p.MainWindowHandle, SW_RESTORE);
+                    SetForegroundWindow(p.MainWindowHandle);
+                    break;
+                }
+            }
+        }
+        catch { }
+    }
     public static ServiceProvider ServiceProvider { get; private set; } = null!;
 
     public static string DatabasePath { get; private set; } = string.Empty;
@@ -52,6 +80,14 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        const string mutexName = @"Global\SupportToolKit_SingleInstance_App_Mutex_2026";
+        _singleInstanceMutex = new System.Threading.Mutex(true, mutexName, out bool isNewInstance);
+        if (!isNewInstance)
+        {
+            BringExistingWindowToFront();
+            Environment.Exit(0);
+            return;
+        }
         DispatcherUnhandledException += (_, args) =>
         {
             var isDropShadowCrash = args.Exception is InvalidOperationException ex
