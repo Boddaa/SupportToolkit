@@ -318,6 +318,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<LicenseService>();
         services.AddSingleton<TelegramNotificationService>();
         services.AddSingleton<CloudAuthService>();
+        services.AddSingleton<AppUpdateService>();
         services.AddSingleton<AuthService>();
         services.AddSingleton<CurrentUserService>();
         services.AddSingleton<Services.INavigationService, Services.NavigationService>();

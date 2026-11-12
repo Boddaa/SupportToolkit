@@ -2,31 +2,21 @@
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-      mc:Ignorable="d" 
-      x:Class="NetworkDiscoveryTool.UI.Views.Settings.SettingsPage"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" x:Class="NetworkDiscoveryTool.UI.Views.Settings.SettingsPage"
       Title="Settings"
       Background="{DynamicResource PageBgBrush}"
-      UseLayoutRounding="True"
-      SnapsToDevicePixels="True"
-      TextOptions.TextFormattingMode="Display"
-      TextOptions.TextRenderingMode="ClearType"
-      RenderOptions.ClearTypeHint="Enabled"
       Loaded="Page_Loaded">
 
     <Page.Resources>
-        <!-- Windows 11-style Smooth Toggle Switch -->
+        <!-- Windows 11-style Toggle Switch -->
         <Style x:Key="ToggleSwitch" TargetType="{x:Type CheckBox}">
-            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type CheckBox}">
-                        <Border x:Name="Track" Width="44" Height="22" CornerRadius="11"
+                        <Border x:Name="Track" Width="44" Height="24" CornerRadius="12"
                                 Background="{DynamicResource InputBorderBrush}"
-                                BorderThickness="1" BorderBrush="{DynamicResource CardBorderBrush}"
-                                SnapsToDevicePixels="True">
-                            <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="8"
+                                BorderThickness="0" SnapsToDevicePixels="True" Cursor="Hand">
+                            <Border x:Name="Thumb" Width="20" Height="20" CornerRadius="10"
                                     Background="White" HorizontalAlignment="Left" VerticalAlignment="Center"
                                     Margin="2,0,0,0">
                                 <Border.RenderTransform>
@@ -41,7 +31,7 @@
                                         <Storyboard>
                                             <DoubleAnimation Storyboard.TargetName="Thumb"
                                                              Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)"
-                                                             To="22" Duration="0:0:0.15"/>
+                                                             To="20" Duration="0:0:0.15"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </Trigger.EnterActions>
@@ -55,7 +45,6 @@
                                     </BeginStoryboard>
                                 </Trigger.ExitActions>
                                 <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}"/>
-                                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Track" Property="Opacity" Value="0.4"/>
@@ -66,22 +55,19 @@
             </Setter>
         </Style>
 
-        <!-- Category Card with left accent highlight -->
+        <!-- Category Card with left accent bar -->
         <Style x:Key="CategoryCard" TargetType="{x:Type Border}">
             <Setter Property="Background" Value="{DynamicResource CardBgBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Margin" Value="0,0,0,18"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-            <Setter Property="SnapsToDevicePixels" Value="True"/>
         </Style>
 
         <!-- Settings row label -->
         <Style x:Key="SettingLabel" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextLabelBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
@@ -94,27 +80,17 @@
 
         <!-- Stat label for About section -->
         <Style x:Key="StatLabel" TargetType="{x:Type TextBlock}">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </Style>
 
         <Style x:Key="StatValue" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         </Style>
-
-        <!-- Accent bar color resources per category -->
-        <SolidColorBrush x:Key="AccentBar1" Color="#0EA5E9"/>
-        <SolidColorBrush x:Key="AccentBar2" Color="#10B981"/>
-        <SolidColorBrush x:Key="AccentBar3" Color="#06B6D4"/>
-        <SolidColorBrush x:Key="AccentBar4" Color="#F59E0B"/>
-        <SolidColorBrush x:Key="AccentBar5" Color="#8B5CF6"/>
-        <SolidColorBrush x:Key="AccentBar6" Color="#3B82F6"/>
     </Page.Resources>
 
     <Grid>
@@ -122,58 +98,59 @@
                      Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}}"
                      VerticalAlignment="Top" Panel.ZIndex="10"/>
 
-        <ScrollViewer Style="{StaticResource Scroller}" Margin="0,0,-6,0" Padding="0,0,6,0">
-            <StackPanel Margin="32,24,32,40">
+        <ScrollViewer Style="{StaticResource Scroller}" Margin="0,0,-17,0">
+            <StackPanel Margin="36,28">
 
                 <!-- ============================================ -->
-                <!-- HEADER & STATUS BAR                          -->
+                <!-- HEADER                                        -->
                 <!-- ============================================ -->
-                <Grid Margin="0,0,0,24">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Border Width="40" Height="40" CornerRadius="10"
-                                    Background="{DynamicResource AccentMutedBrush}"
-                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1"
-                                    Margin="0,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                                           Foreground="{DynamicResource AccentBrush}"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Settings &amp; Preferences" Style="{StaticResource HeadingXL}"/>
-                                <TextBlock Text="Global system parameters, telemetry presets &amp; security configurations" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Status indicator pill -->
-                        <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}"
-                                BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                <TextBlock Text="{Binding StatusMessage, FallbackValue='Configuration Sync Ready'}" 
-                                           FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
+                <StackPanel Margin="0,0,0,30">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="48" Height="48" CornerRadius="12"
+                                Background="{DynamicResource InputBgBrush}" Opacity="0.12">
+                            <TextBlock Text="⚙" FontFamily="Segoe UI Emoji" FontSize="26"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
-
-                        <Button Command="{Binding SaveAllSettingsCommand}"
-                                Style="{StaticResource BtnPrimary}" Height="36" Padding="18,0"
-                                IsEnabled="{Binding IsSaving, Converter={StaticResource BooleanNotConverter}}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Save Changes" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Grid>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Settings" Style="{StaticResource HeadingXXL}"/>
+                            <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource BodySm}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Command="{Binding SaveAllSettingsCommand}"
+                                Content="💾  Save All" FontFamily="Segoe UI Emoji"
+                                Style="{StaticResource BtnPrimary}" VerticalAlignment="Center"
+                                IsEnabled="{Binding IsSaving, Converter={StaticResource BooleanNotConverter}}"/>
+                    </Grid>
+                </StackPanel>
 
                 <!-- ============================================ -->
-                <!-- 1. APPEARANCE & LOCALIZATION                  -->
+                <!-- 1. APPEARANCE                                 -->
+
+                <!-- ============================================ -->
+                <!-- 2. NOTIFICATIONS                              -->
+
+                <!-- ============================================ -->
+                <!-- 3. DATABASE                                    -->
+
+                <!-- ============================================ -->
+                <!-- 4. LOGS                                        -->
+
+                <!-- ============================================ -->
+                <!-- 5. UPDATES                                     -->
+
+                <!-- ============================================ -->
+                <!-- 6. ABOUT                                       -->
+
+                <!-- ============================================ -->
+                <!-- 7. USER MANAGEMENT (Admin only)                -->
+
+                <!-- ============================================ -->
+                <!-- 8. SAVE CHANGES                                -->
                 <!-- ============================================ -->
                 <Border x:Name="AppearanceCard" Style="{StaticResource CategoryCard}">
                     <Grid>
@@ -181,35 +158,36 @@
                             <ColumnDefinition Width="4"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="{StaticResource AccentBar1}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <Border Width="30" Height="30" CornerRadius="6" Background="{DynamicResource AccentMutedBrush}" Margin="0,0,10,0">
-                                    <TextBlock Text="&#xE790;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Appearance &amp; Theme" Style="{StaticResource HeadingSm}"/>
-                                    <TextBlock Text="Customize color theme palette across the console (Dark, Blue, Light)" Style="{StaticResource Caption}"/>
-                                </StackPanel>
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="🎨" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Appearance" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
-
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="120"/>
-                                    <ColumnDefinition Width="280"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="Theme Style" Style="{StaticResource SettingLabel}"/>
+                                <TextBlock Text="Theme" Style="{StaticResource SettingLabel}"/>
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme}"
-                                          Style="{StaticResource ModernDarkComboBox}"
-                                          Height="34" FontSize="12"/>
+                                           Height="34" FontSize="12" Margin="0,0,24,0"
+                                           Background="{DynamicResource InputBgBrush}"
+                                           BorderBrush="{DynamicResource InputBorderBrush}"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Grid.Column="2" Text="Language" Style="{StaticResource SettingLabel}" Margin="0,0,0,0"/>
+                                <ComboBox Grid.Column="3" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}"
+                                          Height="34" FontSize="12"
+                                          Background="{DynamicResource InputBgBrush}"
+                                          BorderBrush="{DynamicResource InputBorderBrush}"
+                                          Foreground="{DynamicResource TextPrimaryBrush}"/>
                             </Grid>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- 2. NOTIFICATIONS & ALERTS                    -->
                 <!-- ============================================ -->
                 <Border x:Name="NotificationsCard" Style="{StaticResource CategoryCard}">
                     <Grid>
@@ -217,162 +195,88 @@
                             <ColumnDefinition Width="4"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="{StaticResource AccentBar2}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
+                        <Border Background="{DynamicResource SuccessBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="🔔" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Notifications" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
                             <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="30" Height="30" CornerRadius="6" Background="{DynamicResource SuccessBgBrush}" Margin="0,0,10,0">
-                                        <TextBlock Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Notifications &amp; Event Alerts" Style="{StaticResource HeadingSm}"/>
-                                        <TextBlock Text="Receive real-time desktop notifications for background discoveries &amp; health state changes" Style="{StaticResource Caption}"/>
-                                    </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="Enable notifications" Style="{StaticResource SettingLabel}"/>
+                                    <TextBlock Text="Receive alerts for scan results and system events" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
                                 </StackPanel>
                                 <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
                                           IsChecked="{Binding EnableNotifications}" VerticalAlignment="Center"/>
                             </Grid>
-
                             <Border Background="{DynamicResource InputBgBrush}" CornerRadius="8"
-                                    Padding="16,14" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                    Padding="16,12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
                                     IsEnabled="{Binding EnableNotifications}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-
-                                    <!-- Trigger 1 -->
-                                    <Grid Margin="0,0,16,12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Scan Completion Alert" Style="{StaticResource SettingLabel}" FontSize="12"/>
-                                            <TextBlock Text="Notify when a network or port sweep finishes" Style="{StaticResource Caption}" FontSize="11"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                                  IsChecked="{Binding NotifyOnScanComplete}" VerticalAlignment="Center"/>
-                                    </Grid>
-
-                                    <!-- Trigger 2 -->
-                                    <Grid Grid.Column="1" Margin="16,0,0,12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Scan Failure / Warning" Style="{StaticResource SettingLabel}" FontSize="12"/>
-                                            <TextBlock Text="Notify when timeouts or socket exceptions occur" Style="{StaticResource Caption}" FontSize="11"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                                  IsChecked="{Binding NotifyOnScanError}" VerticalAlignment="Center"/>
-                                    </Grid>
-
-                                    <!-- Trigger 3 -->
-                                    <Grid Grid.Row="1" Margin="0,0,16,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Service State Transition" Style="{StaticResource SettingLabel}" FontSize="12"/>
-                                            <TextBlock Text="Notify on Windows/IIS service start, stop or recycle" Style="{StaticResource Caption}" FontSize="11"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                                  IsChecked="{Binding NotifyOnServiceChange}" VerticalAlignment="Center"/>
-                                    </Grid>
-
-                                    <!-- Trigger 4 -->
-                                    <Grid Grid.Row="1" Grid.Column="1" Margin="16,0,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="New Operator Enrollment" Style="{StaticResource SettingLabel}" FontSize="12"/>
-                                            <TextBlock Text="Notify when an operator requests console authorization" Style="{StaticResource Caption}" FontSize="11"/>
-                                        </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                                  IsChecked="{Binding NotifyOnNewUserRegistration}" VerticalAlignment="Center"/>
-                                    </Grid>
+                                    <StackPanel>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Scan complete" Style="{StaticResource SettingLabel}" FontSize="12"/>
+                                                <TextBlock Text="When a network scan finishes" Style="{StaticResource Caption}" FontSize="10"/>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                                      IsChecked="{Binding NotifyOnScanComplete}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Scan error" Style="{StaticResource SettingLabel}" FontSize="12"/>
+                                                <TextBlock Text="When a scan encounters errors" Style="{StaticResource Caption}" FontSize="10"/>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                                      IsChecked="{Binding NotifyOnScanError}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Service change" Style="{StaticResource SettingLabel}" FontSize="12"/>
+                                                <TextBlock Text="When a monitored service changes state" Style="{StaticResource Caption}" FontSize="10"/>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                                      IsChecked="{Binding NotifyOnServiceChange}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="New user registration" Style="{StaticResource SettingLabel}" FontSize="12"/>
+                                                <TextBlock Text="When a new user signs up" Style="{StaticResource Caption}" FontSize="10"/>
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                                      IsChecked="{Binding NotifyOnNewUserRegistration}" VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </StackPanel>
                                 </Grid>
-                            </Border>
-
-                            <!-- Telegram Admin Alert Integration -->
-                            <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                                    CornerRadius="8" Padding="16,12" Margin="0,14,0,0"
-                                    Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="&#xE715;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Telegram Admin Instant Alert Integration" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                            <!-- Export Encrypted telegram.enc -->
-                                            <Button Command="{Binding ExportEncryptedTelegramConfigCommand}"
-                                                    Height="26" Padding="10,0" Margin="0,0,8,0"
-                                                    Style="{StaticResource BtnSecondary}"
-                                                    FontSize="11" FontWeight="SemiBold" Cursor="Hand"
-                                                    ToolTip="Export an encrypted 'telegram.enc' file for distribution or hot-swapping">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="&#xEDE1;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="Export telegram.enc" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Button>
-
-                                            <Button Command="{Binding TestTelegramBotCommand}"
-                                                    Height="26" Padding="12,0"
-                                                    Background="{DynamicResource AccentBrush}" Foreground="White"
-                                                    FontSize="11" FontWeight="SemiBold" Cursor="Hand"
-                                                    BorderThickness="0" md:ButtonAssist.CornerRadius="5">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                    <TextBlock Text="Send Test Alert" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Button>
-                                        </StackPanel>
-                                    </Grid>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1.8*"/>
-                                            <ColumnDefinition Width="1.2*"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Margin="0,0,12,0">
-                                            <TextBlock Text="Telegram Bot Token" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                            <TextBox Text="{Binding TelegramBotToken, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource TxtBox}" Height="32" FontSize="11"
-                                                     ToolTip="Enter your Telegram Bot API token (e.g. 123456789:ABCdef...)"/>
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1">
-                                            <TextBlock Text="Admin Chat ID" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                            <TextBox Text="{Binding TelegramAdminChatId, UpdateSourceTrigger=PropertyChanged}"
-                                                     Style="{StaticResource TxtBox}" Height="32" FontSize="11"
-                                                     ToolTip="Enter your Telegram Admin Chat ID (e.g. 987654321)"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </StackPanel>
                             </Border>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- 3. DATABASE & SCAN ENGINE PRESETS            -->
                 <!-- ============================================ -->
                 <Border x:Name="DatabaseCard" Style="{StaticResource CategoryCard}">
                     <Grid>
@@ -380,124 +284,132 @@
                             <ColumnDefinition Width="4"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="{StaticResource AccentBar3}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <Border Width="30" Height="30" CornerRadius="6" Background="{DynamicResource InfoBgBrush}" Margin="0,0,10,0">
-                                    <TextBlock Text="&#xEA47;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Database &amp; Engine Defaults" Style="{StaticResource HeadingSm}"/>
-                                    <TextBlock Text="Primary SQLite repository path, SQL server parameters &amp; sweep presets" Style="{StaticResource Caption}"/>
-                                </StackPanel>
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="🗄" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Database" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
-
-                            <!-- Database Storage Banner -->
-                            <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                                    CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="LOCAL REPOSITORY" Style="{StaticResource Caption}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
-                                        <TextBlock Text="{Binding DatabasePath, Mode=OneTime}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Button Command="{Binding TestConnectionCommand}"
-                                                Style="{StaticResource BtnSecondary}" Height="30" FontSize="11" Padding="12,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE703;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Test Connection" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Command="{Binding ResetDatabaseCommand}"
-                                                Style="{StaticResource BtnDanger}" Height="30" FontSize="11" Padding="12,0" Margin="8,0,0,0"
-                                                Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Reset DB" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-
-                            <!-- SQL Server Parameters -->
-                            <TextBlock Text="Default SQL Server Instance" Style="{StaticResource Label}" Margin="0,4,0,8"/>
-                            <Grid Margin="0,0,0,10">
+                            <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
                                     <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Location" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="1" Text="{Binding DatabasePath, Mode=OneTime}" Height="32" FontSize="11"
+                                         IsReadOnly="True" Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}" Padding="10,0"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <Button Command="{Binding TestConnectionCommand}"
+                                        Content="🔗  Test Connection" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnSecondary}" Height="32" FontSize="11"/>
+                                <Button Command="{Binding ResetDatabaseCommand}"
+                                        Content="🗑  Reset Database" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnDanger}" Height="32" FontSize="11" Margin="10,0,0,0"/>
+                            </StackPanel>
+                            <Separator Style="{StaticResource Separator}" Margin="0,0,0,18"/>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="100"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="80"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="Host / Instance" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SqlServer}" Style="{StaticResource TxtBox}" Height="32" TextChanged="TextBox_TextChanged"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                    <TextBlock Text="Port" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SqlPort}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                    <TextBlock Text="Database" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SqlDatabase}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                                    <TextBlock Text="Username" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding SqlUsername}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
-                                    <TextBlock Text="Password" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <PasswordBox x:Name="SqlPasswordBox" Height="32" FontSize="12"
-                                                 Background="{DynamicResource InputBgBrush}"
-                                                 BorderBrush="{DynamicResource InputBorderBrush}"
-                                                 Foreground="{DynamicResource TextPrimaryBrush}"
-                                                 Padding="10,0"/>
-                                </StackPanel>
+                                <TextBlock Text="Server" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="1" Text="{Binding SqlServer}" Height="32" FontSize="12"
+                                         Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0" Margin="0,0,12,0" TextChanged="TextBox_TextChanged"/>
+                                <TextBlock Grid.Column="2" Text="Port" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="3" Text="{Binding SqlPort}" Height="32" FontSize="12"
+                                         Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0"/>
                             </Grid>
-
-                            <!-- Scan Defaults Matrix -->
-                            <TextBlock Text="Discovery &amp; Sweep Concurrency Presets" Style="{StaticResource Label}" Margin="0,10,0,8"/>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Database" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="1" Text="{Binding SqlDatabase}" Height="32" FontSize="12"
+                                         Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="2" Text="Username" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="3" Text="{Binding SqlUsername}" Height="32" FontSize="12"
+                                         Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0"/>
+                            </Grid>
                             <Grid>
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="1.2*"/>
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Margin="0,0,8,0">
-                                    <TextBlock Text="Max Threads" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding DefaultMaxThreads}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                    <TextBlock Text="Ping Timeout (ms)" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding DefaultPingTimeout}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" Margin="0,0,8,0">
-                                    <TextBlock Text="Port Timeout (ms)" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding DefaultPortTimeout}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" Margin="0,0,8,0">
-                                    <TextBlock Text="Default Start IP" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding DefaultStartIP}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4">
-                                    <TextBlock Text="Default End IP" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding DefaultEndIP}" Style="{StaticResource TxtBox}" Height="32"/>
-                                </StackPanel>
+                                <TextBlock Text="Password" Style="{StaticResource SettingLabel}"/>
+                                <PasswordBox Grid.Column="1" x:Name="SqlPasswordBox" Height="32" FontSize="12"
+                                             Background="{DynamicResource InputBgBrush}"
+                                             BorderBrush="{DynamicResource InputBorderBrush}" Padding="10,0"/>
                             </Grid>
+
+                            <Separator Style="{StaticResource Separator}" Margin="0,18,0,18"/>
+
+                            <StackPanel Margin="0,0,0,14">
+                                <TextBlock Text="Scan Defaults" Style="{StaticResource Label}" Margin="0,0,0,14"/>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Max threads" Style="{StaticResource SettingLabel}" FontSize="11"/>
+                                        <TextBox Text="{Binding DefaultMaxThreads}" Height="30" FontSize="11" Margin="0,4,8,0"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Ping timeout (ms)" Style="{StaticResource SettingLabel}" FontSize="11"/>
+                                        <TextBox Text="{Binding DefaultPingTimeout}" Height="30" FontSize="11" Margin="0,4,8,0"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Port timeout (ms)" Style="{StaticResource SettingLabel}" FontSize="11"/>
+                                        <TextBox Text="{Binding DefaultPortTimeout}" Height="30" FontSize="11" Margin="0,4,8,0"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="Start IP" Style="{StaticResource SettingLabel}" FontSize="11"/>
+                                        <TextBox Text="{Binding DefaultStartIP}" Height="30" FontSize="11" Margin="0,4,8,0"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4">
+                                        <TextBlock Text="End IP" Style="{StaticResource SettingLabel}" FontSize="11"/>
+                                        <TextBox Text="{Binding DefaultEndIP}" Height="30" FontSize="11" Margin="0,4,0,0"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="8,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- ============================================ -->
-                <!-- 4. LOGS & STORAGE PATHS                      -->
                 <!-- ============================================ -->
                 <Border x:Name="LogsCard" Style="{StaticResource CategoryCard}">
                     <Grid>
@@ -505,87 +417,195 @@
                             <ColumnDefinition Width="4"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <Border Background="{StaticResource AccentBar4}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <Border Width="30" Height="30" CornerRadius="6" Background="{DynamicResource WarningBgBrush}" Margin="0,0,10,0">
-                                    <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Diagnostics &amp; Storage Paths" Style="{StaticResource HeadingSm}"/>
-                                    <TextBlock Text="Verbosity level, auto-save triggers and target export directories" Style="{StaticResource Caption}"/>
-                                </StackPanel>
+                        <Border Background="{DynamicResource WarningBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="📋" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Logs" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
-
                             <Grid Margin="0,0,0,14">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="200"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-
-                                <Grid Margin="0,0,12,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="100"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Log Verbosity" Style="{StaticResource SettingLabel}"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}"
-                                              Style="{StaticResource ModernDarkComboBox}"
-                                              Height="34" FontSize="12"
-                                              SelectionChanged="ComboBox_SelectionChanged"/>
-                                </Grid>
-
-                                <Grid Grid.Column="1" Margin="12,0,0,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Auto-Save Results" Style="{StaticResource SettingLabel}"/>
-                                        <TextBlock Text="Persist scan snapshots automatically" Style="{StaticResource Caption}"/>
-                                    </StackPanel>
-                                    <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
-                                              IsChecked="{Binding AutoSaveEnabled}" VerticalAlignment="Center"/>
-                                </Grid>
+                                <TextBlock Text="Log level" Style="{StaticResource SettingLabel}"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding LogLevels}" SelectedItem="{Binding LogLevel}"
+                                          Height="34" FontSize="12"
+                                          Background="{DynamicResource InputBgBrush}"
+                                          BorderBrush="{DynamicResource InputBorderBrush}"
+                                          Foreground="{DynamicResource TextPrimaryBrush}" SelectionChanged="ComboBox_SelectionChanged" Grid.ColumnSpan="2" Margin="0,0,209,0"/>
                             </Grid>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Auto save" Style="{StaticResource SettingLabel}"/>
+                                <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}"
+                                          IsChecked="{Binding AutoSaveEnabled}" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" Text="Automatically save results to disk" Style="{StaticResource Caption}"
+                                           Margin="14,0,0,0" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Export folder" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="1" Text="{Binding ExportFolder}" Height="32" FontSize="11"
+                                         IsReadOnly="True" Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}" Padding="10,0"/>
+                                <Button Grid.Column="2" Command="{Binding BrowseExportFolderCommand}"
+                                        Content="📂" FontFamily="Segoe UI Emoji"
+                                        Width="32" Height="32" Margin="8,0,0,0"
+                                        Style="{StaticResource BtnSm}" Padding="0" FontSize="12"/>
+                            </Grid>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Default save folder" Style="{StaticResource SettingLabel}"/>
+                                <TextBox Grid.Column="1" Text="{Binding DefaultSaveFolder}" Height="32" FontSize="11"
+                                         IsReadOnly="True" Background="{DynamicResource InputBgBrush}"
+                                         BorderBrush="{DynamicResource InputBorderBrush}"
+                                         Foreground="{DynamicResource TextSecondaryBrush}" Padding="10,0"/>
+                                <Button Grid.Column="2" Command="{Binding BrowseDefaultSaveFolderCommand}"
+                                        Content="📂" FontFamily="Segoe UI Emoji"
+                                        Width="32" Height="32" Margin="8,0,0,0"
+                                        Style="{StaticResource BtnSm}" Padding="0" FontSize="12"/>
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
+                <!-- ============================================ -->
+                <Border x:Name="UpdatesCard" Style="{StaticResource CategoryCard}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="🔄" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Updates" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                                <Border CornerRadius="10" Padding="8,2" Margin="12,0,0,0"
+                                        Background="{DynamicResource SuccessBrush}" Opacity="0.12">
+                                    <TextBlock Text="Up to date" Style="{StaticResource Caption}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource SuccessBrush}"/>
+                                </Border>
+                            </StackPanel>
+                            <Grid Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Current version" Style="{StaticResource SettingLabel}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding AppVersion}" Style="{StaticResource FieldValue}"/>
+                            </Grid>
                             <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Last checked" Style="{StaticResource SettingLabel}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding LastUpdateCheck}" Style="{StaticResource FieldValue}"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding CheckForUpdatesCommand}"
+                                        Content="🔄  Check for Updates" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnPrimary}" Height="34" FontSize="12"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ============================================ -->
+                <Border x:Name="AboutCard" Style="{StaticResource CategoryCard}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{DynamicResource DangerBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="ℹ" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="About" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-
-                                <!-- Export Folder -->
                                 <StackPanel Margin="0,0,12,0">
-                                    <TextBlock Text="Export Output Directory" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Version" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppVersion}" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Framework" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppFramework}" Style="{StaticResource StatValue}"/>
+                                    </Grid>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding ExportFolder}" Style="{StaticResource TxtBox}" Height="32" FontSize="12" IsReadOnly="True"
-                                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                        <Button Grid.Column="1" Command="{Binding BrowseExportFolderCommand}"
-                                                Style="{StaticResource BtnSecondary}" Height="32" Width="36" Padding="0" Margin="6,0,0,0">
-                                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13"/>
-                                        </Button>
+                                        <TextBlock Text="Database" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppDatabase}" Style="{StaticResource StatValue}"/>
                                     </Grid>
                                 </StackPanel>
-
-                                <!-- Default Save Folder -->
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                    <TextBlock Text="Default Snapshot Folder" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
+                                <StackPanel Grid.Column="1" Margin="6,0,6,0">
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Log path" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppLogPath}" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="OS" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppOsVersion}" Style="{StaticResource StatValue}"/>
+                                    </Grid>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBox Text="{Binding DefaultSaveFolder}" Style="{StaticResource TxtBox}" Height="32" FontSize="12" IsReadOnly="True"
-                                                 Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                        <Button Grid.Column="1" Command="{Binding BrowseDefaultSaveFolderCommand}"
-                                                Style="{StaticResource BtnSecondary}" Height="32" Width="36" Padding="0" Margin="6,0,0,0">
-                                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13"/>
-                                        </Button>
+                                        <TextBlock Text="Uptime" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppUptime}" Style="{StaticResource StatValue}"/>
+                                    </Grid>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Margin="12,0,0,0">
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="100"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Memory" Style="{StaticResource StatLabel}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding AppWorkingSet}" Style="{StaticResource StatValue}"/>
                                     </Grid>
                                 </StackPanel>
                             </Grid>
@@ -594,146 +614,182 @@
                 </Border>
 
                 <!-- ============================================ -->
-                <!-- 5. UPDATES & SYSTEM TELEMETRY (ABOUT)        -->
+                <!-- FAMILY & TEAM SUB-ACCOUNTS (SUBSCRIBERS)    -->
                 <!-- ============================================ -->
-                <Grid Margin="0,0,0,18">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="1.4*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Updates Card -->
-                    <Border x:Name="UpdatesCard" Style="{StaticResource CategoryCard}" Margin="0,0,10,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="4"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource AccentBar5}" CornerRadius="2,0,0,2"/>
-                            <StackPanel Grid.Column="1" Margin="20,16">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                                    <Border Width="28" Height="28" CornerRadius="6" Background="{DynamicResource AccentMutedBrush}" Margin="0,0,8,0">
-                                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <TextBlock Text="Software Updates" Style="{StaticResource HeadingSm}" VerticalAlignment="Center"/>
-                                    <Border CornerRadius="8" Padding="6,2" Margin="8,0,0,0"
-                                            Background="{DynamicResource SuccessBgBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
-                                        <TextBlock Text="Up to date" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}"/>
-                                    </Border>
+                
+                <!-- UNLOCKED CARD (When user is Subscribed or Admin) -->
+                <Border x:Name="FamilyManagementCard" Style="{StaticResource CategoryCard}"
+                        Visibility="{Binding CanManageFamily, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <!-- Header -->
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="👨‍👩‍👧‍👦" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Family &amp; Team Sub-Accounts" Style="{StaticResource HeadingSm}"/>
+                                        <TextBlock Text="Create up to 2 sub-accounts for family or team members to share this subscription" Style="{StaticResource BodySm}" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </StackPanel>
                                 </StackPanel>
 
-                                <Grid Margin="0,0,0,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Build Version" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AppVersion}" Style="{StaticResource StatValue}"/>
-                                </Grid>
-
-                                <Grid Margin="0,0,0,14">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="110"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Last Checked" Style="{StaticResource StatLabel}"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding LastUpdateCheck}" Style="{StaticResource StatValue}"/>
-                                </Grid>
-
-                                <Button Command="{Binding CheckForUpdatesCommand}"
-                                        Style="{StaticResource BtnSecondary}" Height="32" FontSize="11" HorizontalAlignment="Left" Padding="14,0">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE777;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Check for Updates" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- About / Telemetry Card -->
-                    <Border x:Name="AboutCard" Grid.Column="1" Style="{StaticResource CategoryCard}" Margin="10,0,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="4"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Background="{StaticResource AccentBar6}" CornerRadius="2,0,0,2"/>
-                            <StackPanel Grid.Column="1" Margin="20,16">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                                    <Border Width="28" Height="28" CornerRadius="6" Background="{DynamicResource InfoBgBrush}" Margin="0,0,8,0">
-                                        <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,0">
+                                        <TextBlock Text="{Binding FamilySlotsInfo}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
                                     </Border>
-                                    <TextBlock Text="Host Environment &amp; Diagnostics" Style="{StaticResource HeadingSm}" VerticalAlignment="Center"/>
+                                    <Button Command="{Binding LoadFamilyMembersCommand}"
+                                            Content="🔄  Refresh" FontFamily="Segoe UI Emoji"
+                                            Style="{StaticResource BtnSecondary}" Height="30" FontSize="11" Padding="10,0"/>
                                 </StackPanel>
+                            </Grid>
 
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
+                            <!-- Alert Messages -->
+                            <Border Background="{DynamicResource DangerBgBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
+                                    Visibility="{Binding HasFamilyError, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding FamilyErrorMessage}" Foreground="{DynamicResource DangerBrush}" FontSize="12" FontWeight="SemiBold"/>
+                            </Border>
 
-                                    <StackPanel Margin="0,0,8,0">
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Framework" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppFramework}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Engine" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppDatabase}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="80"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Memory" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppWorkingSet}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
+                            <Border Background="{DynamicResource SuccessBgBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12"
+                                    Visibility="{Binding HasFamilySuccess, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock Text="{Binding FamilySuccessMessage}" Foreground="{DynamicResource SuccessBrush}" FontSize="12" FontWeight="SemiBold"/>
+                            </Border>
+
+                            <!-- Active Sub-Accounts -->
+                            <TextBlock Text="Active Sub-Accounts" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+
+                            <Border Padding="14,10" Margin="0,0,0,12" Background="{DynamicResource InputBgBrush}" CornerRadius="6"
+                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
+                                    Visibility="{Binding FamilyMembers.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=Inverse}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="ℹ️" FontFamily="Segoe UI Emoji" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="No sub-accounts created yet. Use the form below to create accounts for family members." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <ItemsControl ItemsSource="{Binding FamilyMembers}" Margin="0,0,0,14">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Padding="12,8" Margin="0,0,0,6" Background="{DynamicResource CardBgBrush}" CornerRadius="6" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="👤" FontFamily="Segoe UI Emoji" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                        <TextBlock Text="{Binding Email, StringFormat=' ({0})'}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding CreatedAt, StringFormat='Created: {0}'}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="2" CornerRadius="4" Background="{DynamicResource SuccessBgBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" Padding="8,2" Margin="10,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="Shared Pro" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
+                                                </Border>
+                                                <Button Grid.Column="3" Command="{Binding DataContext.RemoveFamilyMemberCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                        CommandParameter="{Binding}"
+                                                        Content="🗑️ Remove" FontFamily="Segoe UI Emoji"
+                                                        Height="28" Width="90"
+                                                        Background="{DynamicResource DangerBrush}" Foreground="White"
+                                                        FontWeight="Bold" FontSize="11" BorderThickness="0" Cursor="Hand"
+                                                        md:ButtonAssist.CornerRadius="6"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Add New Sub-Account Section -->
+                            <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12"
+                                    Visibility="{Binding CanAddMoreFamily, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="➕  Add New Sub-Account (إضافة مستخدم تابع)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Text="{Binding NewFamilyUsername, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,8,0" Height="34" VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0"
+                                                 md:HintAssist.Hint="Username (3+ chars)"/>
+                                        <TextBox Grid.Column="1" Text="{Binding NewFamilyPassword, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,8,0" Height="34" VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0"
+                                                 md:HintAssist.Hint="Password (4+ chars)"/>
+                                        <TextBox Grid.Column="2" Text="{Binding NewFamilyEmail, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,8,0" Height="34" VerticalContentAlignment="Center"
+                                                 Background="{DynamicResource InputBgBrush}"
+                                                 BorderBrush="{DynamicResource InputBorderBrush}"
+                                                 Foreground="{DynamicResource TextPrimaryBrush}" Padding="10,0"
+                                                 md:HintAssist.Hint="Email (Optional)"/>
+                                        <Button Grid.Column="3" Command="{Binding CreateFamilyMemberCommand}"
+                                                Content="➕ Create User" FontFamily="Segoe UI Emoji"
+                                                Height="34" Padding="14,0" Background="{DynamicResource AccentBrush}" Foreground="White"
+                                                FontWeight="Bold" FontSize="11" Cursor="Hand" md:ButtonAssist.CornerRadius="6"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource InputBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10"
+                                    Visibility="{Binding CanAddMoreFamily, Converter={StaticResource BoolNotToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="✅" FontFamily="Segoe UI Emoji" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Maximum 2 sub-accounts reached. To add another account, remove an existing account above." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- LOCKED CARD (When user is on Trial, Expired, or not Subscribed) -->
+                <Border x:Name="FamilyManagementLockedCard" Style="{StaticResource CategoryCard}"
+                        Visibility="{Binding IsFamilyLocked, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Background="{DynamicResource TextMutedBrush}" CornerRadius="2,0,0,2"/>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="🔒" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="Family &amp; Team Sub-Accounts (Locked)" Style="{StaticResource HeadingSm}"/>
+                                        <TextBlock Text="Exclusive feature: Available only for active Subscribed users" Style="{StaticResource Caption}"/>
                                     </StackPanel>
+                                </StackPanel>
+                                <Border Grid.Column="1" Background="{DynamicResource WarningBgBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="6" Padding="10,4">
+                                    <TextBlock Text="🔒 Requires Pro Subscription" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource WarningBrush}"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="Subscribe to NetworkDiscoveryTool Pro to unlock creating up to 2 sub-accounts for your family or team members, allowing them to use the software on other computers simultaneously under your subscription."
+                                       FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
 
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="65"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="OS" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppOsVersion}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="65"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Uptime" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppUptime}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="65"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Log Path" Style="{StaticResource StatLabel}"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding AppLogPath}" Style="{StaticResource StatValue}"/>
-                                        </Grid>
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </Grid>
-
-                <!-- ============================================ -->
-                <!-- 6. USER ACCESS & SECURITY (ADMIN ONLY)       -->
                 <!-- ============================================ -->
                 <Border x:Name="UserManagementCard" Style="{StaticResource CategoryCard}"
                         Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -743,54 +799,23 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource DangerBrush}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
-                            <Grid Margin="0,0,0,16">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="30" Height="30" CornerRadius="6" Background="{DynamicResource DangerBgBrush}" Margin="0,0,10,0">
-                                        <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="User Access &amp; Role Administration" Style="{StaticResource HeadingSm}"/>
-                                        <TextBlock Text="Approve pending registrations and manage authorized console operator roles" Style="{StaticResource Caption}"/>
-                                    </StackPanel>
-                                </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                                <TextBlock Text="👥" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="User Management" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
 
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button Command="{Binding LoadPendingUsersCommand}"
-                                            Style="{StaticResource BtnSecondary}" Height="30" FontSize="11" Padding="12,0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Refresh Pending" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Command="{Binding LoadAllUsersCommand}"
-                                            Style="{StaticResource BtnSecondary}" Height="30" FontSize="11" Margin="8,0,0,0" Padding="12,0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Refresh Users" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
-                                </StackPanel>
-                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <Button Command="{Binding LoadPendingUsersCommand}"
+                                        Content="🔄  Refresh Pending" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnSecondary}" Height="32" FontSize="11"/>
+                                <Button Command="{Binding LoadAllUsersCommand}"
+                                        Content="🔄  Refresh All Users" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnSecondary}" Height="32" FontSize="11" Margin="10,0,0,0"/>
+                            </StackPanel>
 
-                            <!-- Pending Approvals -->
-                            <TextBlock Text="Pending Authorization Requests" Style="{StaticResource Label}" Margin="0,0,0,8"/>
-                            
-                            <!-- Empty State when no pending users -->
-                            <Border Padding="12,10" Margin="0,0,0,16" Background="{DynamicResource InputBgBrush}" CornerRadius="6"
-                                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                                    Visibility="{Binding PendingUsers.Count, Converter={StaticResource IntToVisibilityConverter}, ConverterParameter=Inverse}">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource SuccessBrush}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="No pending user authorization requests at this time." FontSize="12" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <ItemsControl ItemsSource="{Binding PendingUsers}" Margin="0,0,0,16">
+                            <TextBlock Text="Pending Approvals" Style="{StaticResource Label}" Margin="0,0,0,10"/>
+                            <ItemsControl ItemsSource="{Binding PendingUsers}" Margin="0,0,0,18">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Padding="12,8" Margin="0,0,0,6"
@@ -798,88 +823,57 @@
                                                 BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="30" Height="30" CornerRadius="15" Background="{DynamicResource WarningBrush}" Margin="0,0,10,0">
-                                                    <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="Black" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                                        <TextBlock Text="{Binding Email, StringFormat=' ({0})'}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                                        <TextBlock Text="{Binding HardwareId, StringFormat='HWID: {0}'}" FontSize="10" FontFamily="Consolas" Foreground="{DynamicResource AccentBrush}"/>
-                                                        <TextBlock Text="{Binding CreatedAt, StringFormat=' | Reg: {0:yyyy-MM-dd HH:mm}'}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}"/>
-                                                    </StackPanel>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    <TextBlock Text="{Binding Role}" FontSize="11"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
                                                 </StackPanel>
-                                                <Button Grid.Column="2" Command="{Binding DataContext.ApproveUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                <Button Grid.Column="1" Command="{Binding DataContext.ApproveUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                         CommandParameter="{Binding}"
-                                                        Height="28" Width="90" Margin="8,0"
+                                                        Content="Approve" Height="28" Width="80" Margin="8,0"
                                                         Background="{DynamicResource SuccessBrush}" Foreground="White"
                                                         FontWeight="Bold" FontSize="11" BorderThickness="0" Cursor="Hand"
-                                                        md:ButtonAssist.CornerRadius="6">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="Approve" VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button Grid.Column="3" Command="{Binding DataContext.RejectUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                        md:ButtonAssist.CornerRadius="6"/>
+                                                <Button Grid.Column="2" Command="{Binding DataContext.RejectUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                         CommandParameter="{Binding}"
-                                                        Height="28" Width="90"
+                                                        Content="Reject" Height="28" Width="80"
                                                         Background="{DynamicResource DangerBrush}" Foreground="White"
                                                         FontWeight="Bold" FontSize="11" BorderThickness="0" Cursor="Hand"
-                                                        md:ButtonAssist.CornerRadius="6">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="Reject" VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </Button>
+                                                        md:ButtonAssist.CornerRadius="6"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- All Registered Users -->
-                            <TextBlock Text="Registered Console Operators" Style="{StaticResource Label}" Margin="0,0,0,8"/>
+                            <TextBlock Text="All Users" Style="{StaticResource Label}" Margin="0,0,0,10"/>
                             <ItemsControl ItemsSource="{Binding AllUsers}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Padding="12,8" Margin="0,0,0,4"
-                                                Background="{DynamicResource InputBgBrush}" CornerRadius="6"
+                                        <Border Padding="10,6" Margin="0,0,0,4"
+                                                Background="{DynamicResource InputBgBrush}" CornerRadius="4"
                                                 BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource AccentMutedBrush}" Margin="0,0,10,0">
-                                                    <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                </Border>
-                                                <TextBlock Grid.Column="1" Text="{Binding Username}" FontSize="13" FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                                <Border Grid.Column="2" CornerRadius="4" Background="{DynamicResource CardBgBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1"
-                                                        Padding="8,2" Margin="10,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Role}" FontSize="11" FontWeight="SemiBold"
-                                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
-                                                </Border>
-                                                <Button Grid.Column="3" Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
+                                                <TextBlock Text="{Binding Username}" FontSize="13"
+                                                           Foreground="{DynamicResource TextLabelBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Role}" FontSize="11"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="8,0"/>
+                                                <Button Grid.Column="2" Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"
                                                         CommandParameter="{Binding}"
-                                                        Height="26" Width="76"
+                                                        Content="Delete" Height="26" Width="70"
                                                         Background="{DynamicResource DangerBrush}" Foreground="White"
                                                         FontWeight="Bold" FontSize="11" BorderThickness="0" Cursor="Hand"
-                                                        md:ButtonAssist.CornerRadius="5">
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="11" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                                        <TextBlock Text="Delete" VerticalAlignment="Center"/>
-                                                    </StackPanel>
-                                                </Button>
+                                                        md:ButtonAssist.CornerRadius="5"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -890,8 +884,6 @@
                 </Border>
 
                 <!-- ============================================ -->
-                <!-- 7. SAVE FOOTER                               -->
-                <!-- ============================================ -->
                 <Border x:Name="SaveChangesCard" Style="{StaticResource CategoryCard}">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -899,26 +891,19 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Border Background="{DynamicResource SuccessBrush}" CornerRadius="2,0,0,2"/>
-                        <StackPanel Grid.Column="1" Margin="22,18">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Apply &amp; Persist Configuration" Style="{StaticResource HeadingSm}"/>
-                                    <TextBlock Text="Theme &amp; language changes apply instantly. Click Save to persist database, scan and logging configurations."
-                                               Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Command="{Binding SaveAllSettingsCommand}"
-                                        Style="{StaticResource BtnPrimary}" Height="38" Padding="20,0" VerticalAlignment="Center"
-                                        IsEnabled="{Binding IsSaving, Converter={StaticResource BooleanNotConverter}}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE74E;" FontFamily="Segoe MDL2 Assets" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Save All Settings" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
+                        <StackPanel Grid.Column="1" Margin="24,20">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <TextBlock Text="💾" FontFamily="Segoe UI Emoji" FontSize="20" VerticalAlignment="Center"/>
+                                <TextBlock Text="Save Changes" Style="{StaticResource HeadingSm}" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Text="Changes to theme and language are saved automatically. Use the button below to persist all other settings to the database."
+                                       Style="{StaticResource BodySm}" TextWrapping="Wrap" Margin="0,0,0,14"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding SaveAllSettingsCommand}"
+                                        Content="💾  Save All Settings" FontFamily="Segoe UI Emoji"
+                                        Style="{StaticResource BtnPrimary}" Height="38" FontSize="13"
+                                        IsEnabled="{Binding IsSaving, Converter={StaticResource BooleanNotConverter}}"/>
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                 </Border>

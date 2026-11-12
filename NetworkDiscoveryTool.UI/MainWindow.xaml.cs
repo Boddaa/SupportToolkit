@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -95,7 +95,95 @@ public partial class MainWindow : Window
 
             // Restore user's previous session state (active page, sidebar, etc.)
             await RestoreLastStateAsync();
+
+            // Background check for application updates
+            _ = CheckForAppUpdatesAsync();
         };
+    }
+
+    private async Task CheckForAppUpdatesAsync()
+    {
+        try
+        {
+            await Task.Delay(2500); // Wait for UI to settle
+            var updateService = App.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.Services.Services.AppUpdateService>();
+            var cloudAuth = App.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.Services.Services.CloudAuthService>();
+
+            var update = await updateService.CheckForUpdateAsync(cloudAuth.ServerBaseUrl);
+            if (update != null && update.HasUpdate)
+            {
+                Dispatcher.Invoke(() => ShowUpdatePrompt(update, updateService));
+            }
+        }
+        catch { }
+    }
+
+    private void ShowUpdatePrompt(NetworkDiscoveryTool.Services.Services.AppUpdateService.UpdateCheckResult update, NetworkDiscoveryTool.Services.Services.AppUpdateService updateService)
+    {
+        var msg = $"🎉 A new version of SupportToolKit is available!\n\n" +
+                  $"• Installed Version: v{update.CurrentVersion}\n" +
+                  $"• Available Version: v{update.LatestVersion}\n\n" +
+                  $"What's New in this Release:\n{update.ReleaseNotes}\n\n" +
+                  $"Would you like to download and update now? (The app will restart automatically in seconds)";
+
+        var result = System.Windows.MessageBox.Show(
+            msg,
+            $"Update Available - v{update.LatestVersion}",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Information);
+
+        if (result == System.Windows.MessageBoxResult.Yes)
+        {
+            _ = PerformAppUpdateAsync(update.DownloadUrl, updateService);
+        }
+    }
+
+    private async Task PerformAppUpdateAsync(string downloadUrl, NetworkDiscoveryTool.Services.Services.AppUpdateService updateService)
+    {
+        try
+        {
+            var waitBox = new Window
+            {
+                Title = "Updating SupportToolKit...",
+                Width = 420,
+                Height = 160,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                WindowStyle = WindowStyle.ToolWindow,
+                ResizeMode = ResizeMode.NoResize,
+                Background = (System.Windows.Media.Brush)FindResource("SurfaceBgBrush"),
+                Foreground = (System.Windows.Media.Brush)FindResource("TextPrimaryBrush"),
+                Content = new System.Windows.Controls.StackPanel
+                {
+                    Margin = new Thickness(24),
+                    Children =
+                    {
+                        new System.Windows.Controls.TextBlock
+                        {
+                            Text = "Downloading update from cloud... Application will restart automatically.",
+                            FontWeight = FontWeights.SemiBold,
+                            Margin = new Thickness(0, 0, 0, 14),
+                            TextWrapping = TextWrapping.Wrap
+                        },
+                        new System.Windows.Controls.ProgressBar
+                        {
+                            Height = 12,
+                            IsIndeterminate = true
+                        }
+                    }
+                }
+            };
+
+            waitBox.Show();
+            await updateService.DownloadAndApplyUpdateAsync(downloadUrl);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"Update failed: {ex.Message}",
+                "Update Error",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private const int WM_NCHITTEST = 0x0084;

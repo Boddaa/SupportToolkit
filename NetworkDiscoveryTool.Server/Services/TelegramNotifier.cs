@@ -50,8 +50,8 @@ public sealed class TelegramNotifier
                     {
                         new[]
                         {
-                            new { text = "⭐ Activate 1 Month", callback_data = $"sub:1:{userId}" },
-                            new { text = "⭐ 3 Months", callback_data = $"sub:3:{userId}" }
+                            new { text = "✅ Approve Operator", callback_data = $"appr:{username}:{shortHwid}" },
+                            new { text = "⭐ 1 Month", callback_data = $"sub:1:{userId}" }
                         },
                         new[]
                         {
@@ -98,6 +98,51 @@ public sealed class TelegramNotifier
         {
             return false;
         }
+    }
+
+    public async Task<bool> SendApprovalNotificationAsync(string username, string statusDetails)
+    {
+        if (string.IsNullOrWhiteSpace(BotToken) || string.IsNullOrWhiteSpace(AdminChatId))
+            return false;
+
+        try
+        {
+            var text =
+                $"<b>✅ OPERATOR APPROVED &amp; ACTIVATED</b>\n\n" +
+                $"<b>👤 User:</b> <code>{username}</code>\n" +
+                $"<b>📋 Status:</b> {statusDetails}\n" +
+                $"<b>📅 Approved:</b> {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+
+            var url = $"https://api.telegram.org/bot{BotToken}/sendMessage";
+            var payload = new { chat_id = AdminChatId, text = text, parse_mode = "HTML" };
+            var json = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await HttpClient.PostAsync(url, content);
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
+    public async Task<bool> SendRejectionNotificationAsync(string username)
+    {
+        if (string.IsNullOrWhiteSpace(BotToken) || string.IsNullOrWhiteSpace(AdminChatId))
+            return false;
+
+        try
+        {
+            var text =
+                $"<b>❌ OPERATOR REJECTED</b>\n\n" +
+                $"<b>👤 User:</b> <code>{username}</code>\n" +
+                $"<b>📅 Time:</b> {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+
+            var url = $"https://api.telegram.org/bot{BotToken}/sendMessage";
+            var payload = new { chat_id = AdminChatId, text = text, parse_mode = "HTML" };
+            var json = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await HttpClient.PostAsync(url, content);
+            return response.IsSuccessStatusCode;
+        }
+        catch { return false; }
     }
 
     public async Task<bool> AnswerCallbackQueryAsync(string callbackQueryId, string text)

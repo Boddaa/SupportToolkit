@@ -108,6 +108,21 @@ public class AuditLog
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 }
 
+public class AppRelease
+{
+    public int Id { get; set; }
+    [Required, MaxLength(50)]
+    public string Version { get; set; } = "2.5.0";
+    public string ReleaseNotes { get; set; } = string.Empty;
+    [Required, MaxLength(500)]
+    public string DownloadUrl { get; set; } = "/downloads/SupportToolKit.exe";
+    public bool IsMandatory { get; set; } = false;
+    public long FileSize { get; set; } = 0;
+    public string? FileHash { get; set; }
+    public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; } = true;
+}
+
 // Request and Response DTOs
 public sealed record RegisterRequest(
     string Username,
@@ -135,7 +150,8 @@ public sealed record AuthResponse(
     string? Role = null,
     DateTime? ExpiresAt = null,
     double? RemainingHours = null,
-    string? Token = null
+    string? Token = null,
+    int? UserId = null
 );
 
 public sealed record SubscriptionUpdateRequest(
@@ -160,4 +176,22 @@ public sealed record CreateFamilyMemberRequest(
 public sealed record UnlinkDeviceRequest(
     int UserId,
     string HardwareId
+);
+
+public sealed record CheckUpdateResponse(
+    bool HasUpdate,
+    string LatestVersion,
+    string CurrentVersion,
+    string DownloadUrl,
+    string ReleaseNotes,
+    bool IsMandatory,
+    long FileSize,
+    string PublishedAt
+);
+
+public sealed record PublishReleaseRequest(
+    string Version,
+    string ReleaseNotes,
+    string DownloadUrl,
+    bool IsMandatory
 );

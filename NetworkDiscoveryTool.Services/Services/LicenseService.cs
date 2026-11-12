@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -25,13 +26,60 @@ public sealed class LicenseService
         bool IsActive,
         string? PasswordHash = null);
 
+    private sealed class LicenseStore
+    {
+        public Dictionary<string, LicenseToken> Users { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private Dictionary<string, LicenseToken> LoadTokens()
+    {
+        var result = new Dictionary<string, LicenseToken>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(_licenseFilePath))
+            return result;
+
+        try
+        {
+            var encrypted = File.ReadAllText(_licenseFilePath);
+            var json = DecryptData(encrypted);
+            if (string.IsNullOrWhiteSpace(json)) return result;
+
+            // Try multi-user store format
+            try
+            {
+                var store = JsonSerializer.Deserialize<LicenseStore>(json);
+                if (store?.Users != null && store.Users.Count > 0)
+                {
+                    return new Dictionary<string, LicenseToken>(store.Users, StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch { }
+
+            // Fallback: Legacy single LicenseToken
+            var single = JsonSerializer.Deserialize<LicenseToken>(json);
+            if (single != null && !string.IsNullOrWhiteSpace(single.Username))
+            {
+                result[single.Username] = single;
+            }
+        }
+        catch { }
+
+        return result;
+    }
+
     public void SaveApprovedLicense(string username, string? passwordHash = null)
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(username)) return;
+
+            var clean = username.Trim();
             var hardwareId = HardwareIdService.GetHardwareId();
-            var token = new LicenseToken(username, hardwareId, DateTime.UtcNow, true, passwordHash);
-            var json = JsonSerializer.Serialize(token);
+            var tokens = LoadTokens();
+
+            tokens[clean] = new LicenseToken(clean, hardwareId, DateTime.UtcNow, true, passwordHash);
+
+            var store = new LicenseStore { Users = tokens };
+            var json = JsonSerializer.Serialize(store);
             var encrypted = EncryptData(json);
             File.WriteAllText(_licenseFilePath, encrypted);
         }
@@ -49,16 +97,22 @@ public sealed class LicenseService
 
         try
         {
-            var encrypted = File.ReadAllText(_licenseFilePath);
-            var json = DecryptData(encrypted);
-            if (string.IsNullOrWhiteSpace(json))
+            var clean = (username ?? string.Empty).Trim();
+            var tokens = LoadTokens();
+
+            if (tokens.Count == 0)
             {
                 reason = "License data is unreadable or corrupted.";
                 return false;
             }
 
-            var token = JsonSerializer.Deserialize<LicenseToken>(json);
-            if (token is null || !token.IsActive)
+            if (!tokens.TryGetValue(clean, out var token))
+            {
+                reason = $"No offline license cached for '{clean}'. Please connect to the internet to log in.";
+                return false;
+            }
+
+            if (!token.IsActive)
             {
                 reason = "License is invalid or revoked.";
                 return false;
@@ -71,14 +125,8 @@ public sealed class LicenseService
                 return false;
             }
 
-            if (!string.Equals(token.Username, username, StringComparison.OrdinalIgnoreCase))
-            {
-                reason = "License username mismatch.";
-                return false;
-            }
-
-            // Verify password against cached license token hash
-            if (!string.IsNullOrEmpty(token.PasswordHash))
+            // Verify password against cached license token hash if present and password provided
+            if (!string.IsNullOrEmpty(token.PasswordHash) && !string.IsNullOrEmpty(password))
             {
                 if (!PasswordHasher.VerifyPassword(password, token.PasswordHash, out _))
                 {

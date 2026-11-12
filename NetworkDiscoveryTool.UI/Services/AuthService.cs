@@ -32,7 +32,7 @@ public sealed class AuthService
         int Id,
         string Username,
         string Role,
-        string Status = "Subscribed",
+        string Status = "Trial",
         DateTime? ExpiresAt = null,
         double? RemainingHours = null);
 
@@ -79,75 +79,43 @@ public sealed class AuthService
             if (cloudRes.Success)
             {
                 var appUser = new AppUser(
-                    1,
+                    cloudRes.UserId ?? 1,
                     cleanUsername,
                     cloudRes.Role ?? "User",
-                    cloudRes.Status ?? "Subscribed",
+                    cloudRes.Status ?? "Trial",
                     cloudRes.ExpiresAt,
                     cloudRes.RemainingHours);
 
                 _licenseService.SaveApprovedLicense(cleanUsername);
                 return (true, appUser, null);
             }
-            else if (cloudRes.Status == "Expired" ||
-                     cloudRes.Message.Contains("expired", StringComparison.OrdinalIgnoreCase) ||
-                     cloudRes.Message.Contains("blocked", StringComparison.OrdinalIgnoreCase))
-            {
-                // Explicit rejection from Cloud (License expired or Device blocked)
-                return (false, null, cloudRes.Message);
-            }
             else if (!string.IsNullOrWhiteSpace(cloudRes.Message) &&
                      !cloudRes.Message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) &&
                      !cloudRes.Message.Contains("connection error", StringComparison.OrdinalIgnoreCase))
             {
-                // Server responded with explicit failure (e.g. wrong password)
+                // Explicit rejection from Cloud (wrong password, blocked, expired, etc.)
                 return (false, null, cloudRes.Message);
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Cloud authentication skipped or failed. Falling back to local verification.");
+            Serilog.Log.Warning(ex, "Cloud authentication skipped or failed. Falling back to local offline verification.");
         }
 
-        // 2. Local Fallback Database
-        try
+        // 2. Offline Fallback: ONLY permitted if cryptographically verified offline license exists for this user
+        if (_licenseService.IsLicenseValidOffline(cleanUsername, password, out var offlineReason))
         {
-            using var context = _contextFactory.CreateDbContext();
-            var dbUser = context.Users.FirstOrDefault(u => u.Username == cleanUsername);
-            if (dbUser is not null)
-            {
-                if (!PasswordHasher.VerifyPassword(password, dbUser.PasswordHash, out bool needsRehash))
-                    return (false, null, "Invalid username or password");
-
-                if (needsRehash)
-                {
-                    try
-                    {
-                        dbUser.PasswordHash = PasswordHasher.HashPassword(password);
-                        context.SaveChanges();
-                    }
-                    catch { }
-                }
-
-                if (!dbUser.IsApproved)
-                    return (false, null, "Account pending admin approval.");
-
-                _licenseService.SaveApprovedLicense(dbUser.Username, dbUser.PasswordHash);
-                return (true, new AppUser(dbUser.Id, dbUser.Username, dbUser.Role), null);
-            }
+            return (true, new AppUser(1, cleanUsername, "User", "Subscribed"), null);
         }
-        catch
+
+        if (offlineReason != null && (offlineReason.Contains("mismatch", StringComparison.OrdinalIgnoreCase) ||
+                                     offlineReason.Contains("No offline license", StringComparison.OrdinalIgnoreCase) ||
+                                     offlineReason.Contains("No local license", StringComparison.OrdinalIgnoreCase)))
         {
-            // 3. Fallback to Secure Encrypted Offline License Token
-            if (_licenseService.IsLicenseValidOffline(cleanUsername, password, out var offlineReason))
-            {
-                return (true, new AppUser(1, cleanUsername, "User"), null);
-            }
-
-            return (false, null, offlineReason ?? "Offline credentials validation failed.");
+            return (false, null, "Could not connect to the cloud licensing server and no offline license is cached for this username. Please check your internet connection.");
         }
 
-        return (false, null, "Invalid username or password");
+        return (false, null, offlineReason ?? "Cloud server is unreachable. Please verify your internet connection.");
     }
 
     public bool ValidateUser(string username, string password, out AppUser? user, out string? error)
@@ -174,6 +142,8 @@ public sealed class AuthService
         try
         {
             using var context = _contextFactory.CreateDbContext();
+
+            // 1. Check local SQLite Users table (e.g. built-in Administrator)
             var dbUser = context.Users.FirstOrDefault(u => u.Username == clean);
             if (dbUser is not null)
             {
@@ -183,23 +153,39 @@ public sealed class AuthService
                     return false;
                 }
 
-                user = new AppUser(dbUser.Id, dbUser.Username, dbUser.Role);
+                user = new AppUser(dbUser.Id, dbUser.Username, dbUser.Role, "Subscribed");
                 return true;
             }
-        }
-        catch
-        {
-            if (_licenseService.IsLicenseValidOffline(clean, out var offlineReason))
+
+            // 2. Check local SQLite AppSettings for remembered workstation session
+            var rememberedUser = context.AppSettings.FirstOrDefault(s => s.Key == "Remembered_Username")?.Value;
+            var rememberedActive = context.AppSettings.FirstOrDefault(s => s.Key == "Remembered_IsActive")?.Value;
+            if (string.Equals(rememberedUser, clean, StringComparison.OrdinalIgnoreCase) && rememberedActive == "true")
             {
-                user = new AppUser(1, clean, "User");
+                var role = context.AppSettings.FirstOrDefault(s => s.Key == "Remembered_Role")?.Value ?? "User";
+                var idStr = context.AppSettings.FirstOrDefault(s => s.Key == "Remembered_UserId")?.Value;
+                int.TryParse(idStr, out var uid);
+                if (uid <= 0) uid = 1;
+
+                var status = context.AppSettings.FirstOrDefault(s => s.Key == "Remembered_Status")?.Value ?? "Subscribed";
+
+                user = new AppUser(uid, clean, role, status);
                 return true;
             }
-
-            error = offlineReason ?? "Offline credentials validation failed.";
-            return false;
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Error reading database for remembered user.");
         }
 
-        error = "User not found in system.";
+        // 3. Fallback: Offline license token verification
+        if (_licenseService.IsLicenseValidOffline(clean, out var offlineReason))
+        {
+            user = new AppUser(1, clean, "User", "Subscribed");
+            return true;
+        }
+
+        error = "Remembered workstation profile not found.";
         return false;
     }
 
@@ -218,94 +204,23 @@ public sealed class AuthService
         var cleanPass = password;
         var cleanEmail = email.Trim();
 
-        // 1. Try Cloud Registration with Anti-Cheat HWID check
+        // Central Cloud Registration (Anti-Cheat & Motherboard HWID enforcement)
         try
         {
             var cloudRes = await _cloudAuth.RegisterAsync(cleanUser, cleanPass, cleanEmail);
-            if (cloudRes.Success)
-            {
-                return (true, cloudRes.Message, cloudRes.Status);
-            }
-            else if (cloudRes.Status == "Expired" ||
-                     cloudRes.Message.Contains("already used its 1-day free trial", StringComparison.OrdinalIgnoreCase) ||
-                     cloudRes.Message.Contains("already registered", StringComparison.OrdinalIgnoreCase) ||
-                     cloudRes.Message.Contains("blocked", StringComparison.OrdinalIgnoreCase))
-            {
-                return (false, cloudRes.Message, cloudRes.Status);
-            }
-            else if (!string.IsNullOrWhiteSpace(cloudRes.Message) &&
-                     !cloudRes.Message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) &&
-                     !cloudRes.Message.Contains("connection error", StringComparison.OrdinalIgnoreCase))
-            {
-                return (false, cloudRes.Message, cloudRes.Status);
-            }
+            return (cloudRes.Success, cloudRes.Message, cloudRes.Status);
         }
         catch (Exception ex)
         {
-            Serilog.Log.Warning(ex, "Cloud registration unreachable. Falling back to local registration.");
+            Serilog.Log.Error(ex, "Cloud registration unreachable.");
+            return (false, "Could not connect to central licensing server. Please check your internet connection.", null);
         }
-
-        // 2. Local Database Registration Fallback
-        var (localSuccess, localMsg) = RegisterLocal(cleanUser, cleanPass, cleanEmail);
-        return (localSuccess, localMsg, "Pending");
     }
 
     public (bool Success, string Message) Register(string username, string password, string email = "")
     {
         var res = RegisterAsync(username, password, email).GetAwaiter().GetResult();
         return (res.Success, res.Message);
-    }
-
-    private (bool Success, string Message) RegisterLocal(string username, string password, string email)
-    {
-        var hardwareId = HardwareIdService.GetHardwareId();
-
-        try
-        {
-            using var context = _contextFactory.CreateDbContext();
-
-            if (context.Users.Any(u => u.Username == username))
-                return (false, "Username already exists");
-
-            var user = new User
-            {
-                Username = username,
-                PasswordHash = PasswordHasher.HashPassword(password),
-                Email = email,
-                HardwareId = hardwareId,
-                Role = "User",
-                IsApproved = false,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            context.Users.Add(user);
-            context.SaveChanges();
-
-            if (_telegramService.IsConfigured)
-            {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _telegramService.SendRegistrationAlertAsync(
-                            username,
-                            string.IsNullOrWhiteSpace(email) ? "N/A" : email,
-                            hardwareId,
-                            Environment.MachineName);
-                    }
-                    catch (Exception ex)
-                    {
-                        Serilog.Log.Warning(ex, "Failed to send Telegram registration alert.");
-                    }
-                });
-            }
-
-            return (true, "Registration request submitted. Pending Administrator approval.");
-        }
-        catch (Exception ex)
-        {
-            return (false, $"Registration error: {ex.Message}");
-        }
     }
 
     public sealed record PendingUser(int Id, string Username, string Role, string HardwareId, string Email, DateTime CreatedAt);
@@ -378,28 +293,17 @@ public sealed class AuthService
 
     public async Task<RemoteApprovalStatus> CheckRemoteTelegramApprovalAsync(string username)
     {
-        if (!_telegramService.IsConfigured)
-            return RemoteApprovalStatus.Pending;
-
         var hwid = HardwareIdService.GetHardwareId();
-        var status = await _telegramService.CheckApprovalStatusAsync(username, hwid);
 
-        if (status == RemoteApprovalStatus.Approved)
+        // Check central cloud server (receives real-time Telegram bot callbacks via webhook/polling)
+        try
         {
-            try
-            {
-                using var context = _contextFactory.CreateDbContext();
-                var user = context.Users.FirstOrDefault(u => u.Username == username);
-                if (user != null)
-                {
-                    user.IsApproved = true;
-                    context.SaveChanges();
-                    _licenseService.SaveApprovedLicense(user.Username, user.PasswordHash);
-                }
-            }
-            catch { }
+            var cloudStatus = await _cloudAuth.CheckApprovalStatusAsync(username, hwid);
+            return cloudStatus;
         }
-
-        return status;
+        catch
+        {
+            return RemoteApprovalStatus.Pending;
+        }
     }
 }

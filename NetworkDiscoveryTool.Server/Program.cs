@@ -111,6 +111,18 @@ using (var scope = app.Services.CreateScope())
                 "Details" TEXT,
                 "Timestamp" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS "AppReleases" (
+                "Id" SERIAL PRIMARY KEY,
+                "Version" VARCHAR(50) NOT NULL,
+                "ReleaseNotes" TEXT,
+                "DownloadUrl" VARCHAR(500) NOT NULL,
+                "IsMandatory" BOOLEAN NOT NULL DEFAULT FALSE,
+                "FileSize" BIGINT NOT NULL DEFAULT 0,
+                "FileHash" VARCHAR(100),
+                "PublishedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "IsActive" BOOLEAN NOT NULL DEFAULT TRUE
+            );
         """);
     }
     else
@@ -137,6 +149,24 @@ using (var scope = app.Services.CreateScope())
         db.Users.Add(defaultAdmin);
         await db.SaveChangesAsync();
     }
+
+    if (!await db.AppReleases.AnyAsync())
+    {
+        db.AppReleases.Add(new AppRelease
+        {
+            Version = "2.5.0",
+            ReleaseNotes = "Initial official release with Motherboard hardware binding & cloud identity.",
+            DownloadUrl = "/downloads/SupportToolKit.exe",
+            IsMandatory = false,
+            PublishedAt = DateTime.UtcNow,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+    }
+
+    // Ensure downloads directory exists
+    var downloadsDir = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot"), "downloads");
+    Directory.CreateDirectory(downloadsDir);
 }
 
 // =========================================================================
@@ -246,15 +276,23 @@ app.MapPost("/api/auth/register", async (
     if (existingDevice != null && existingDevice.AssociatedUserId.HasValue)
     {
         var originalUser = await db.Users.FindAsync(existingDevice.AssociatedUserId.Value);
-        var originalName = originalUser?.Username ?? "an existing account";
-        return Results.Json(new AuthResponse(
-            Success: false,
-            Message: $"This computer (Motherboard HWID) already registered account '@{originalName}'. Only 1 trial account per device is permitted. Please log in or subscribe."
-        ), statusCode: 409);
+        if (originalUser != null)
+        {
+            return Results.Json(new AuthResponse(
+                Success: false,
+                Message: $"This computer (Motherboard HWID) already registered account '@{originalUser.Username}'. Only 1 trial account per device is permitted. Please log in or subscribe."
+            ), statusCode: 409);
+        }
+        else
+        {
+            // Previously associated user no longer exists in DB! Reset association.
+            existingDevice.AssociatedUserId = null;
+            existingDevice.IsTrialConsumed = false;
+        }
     }
 
     // ANTI-ABUSE 3: Has this machine consumed trial previously?
-    if (existingDevice != null && (existingDevice.IsTrialConsumed || existingDevice.TrialExpiresAt <= DateTime.UtcNow))
+    if (existingDevice != null && existingDevice.AssociatedUserId.HasValue && (existingDevice.IsTrialConsumed || existingDevice.TrialExpiresAt <= DateTime.UtcNow))
     {
         return Results.Json(new AuthResponse(
             Success: false,
@@ -337,7 +375,8 @@ app.MapPost("/api/auth/register", async (
         Status: nameof(UserSubscriptionStatus.Trial),
         Role: user.Role,
         ExpiresAt: trialEnd,
-        RemainingHours: Math.Round(remainingHours, 1)
+        RemainingHours: Math.Round(remainingHours, 1),
+        UserId: user.Id
     ));
 });
 
@@ -468,7 +507,8 @@ app.MapPost("/api/auth/login", async (
                 Status: nameof(UserSubscriptionStatus.Subscribed),
                 Role: user.Role,
                 ExpiresAt: effectiveSubscriber.SubscriptionExpiresAt,
-                RemainingHours: Math.Round(hours, 1)
+                RemainingHours: Math.Round(hours, 1),
+                UserId: user.Id
             ));
         }
 
@@ -514,7 +554,8 @@ app.MapPost("/api/auth/login", async (
                 Status: user.Status,
                 Role: user.Role,
                 ExpiresAt: user.TrialExpiresAt,
-                RemainingHours: Math.Round(hours, 1)
+                RemainingHours: Math.Round(hours, 1),
+                UserId: user.Id
             ));
         }
 
@@ -547,6 +588,46 @@ app.MapPost("/api/auth/login", async (
         Message: "Account access expired or suspended. Contact administrator on Telegram to subscribe.",
         Status: user.Status
     ), statusCode: 403);
+});
+
+// =========================================================================
+// 3.5 CHECK APPROVAL STATUS (Immediate Cloud Polling for Waiting Clients)
+// =========================================================================
+app.MapGet("/api/auth/check-approval", async ([FromQuery] string? username, [FromQuery] string? hardwareId, ServerDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(username))
+        return Results.BadRequest(new { approved = false, status = "Pending", message = "Username required" });
+
+    var cleanUser = username.Trim().ToLower();
+
+    // 1. Check in-memory approval cache (fastest, catches instant Telegram approvals)
+    if (TelegramPollingService.ApprovedUsersCache.TryGetValue(cleanUser, out var isAppr) && isAppr)
+    {
+        return Results.Ok(new { approved = true, status = "Approved", message = "Approved by Administrator via Telegram." });
+    }
+    if (TelegramPollingService.RejectedUsersCache.TryGetValue(cleanUser, out var isRejc) && isRejc)
+    {
+        return Results.Ok(new { approved = false, rejected = true, status = "Rejected", message = "Rejected by Administrator." });
+    }
+
+    // 2. Check Database
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == cleanUser);
+    if (user != null)
+    {
+        if (user.Status == nameof(UserSubscriptionStatus.Suspended))
+        {
+            return Results.Ok(new { approved = false, rejected = true, status = "Suspended", message = "User is suspended." });
+        }
+
+        if (user.IsApproved ||
+            user.Status == nameof(UserSubscriptionStatus.Subscribed) ||
+            user.Status == nameof(UserSubscriptionStatus.Trial))
+        {
+            return Results.Ok(new { approved = true, status = user.Status, message = "User is approved and active." });
+        }
+    }
+
+    return Results.Ok(new { approved = false, status = "Pending", message = "Waiting for administrator approval." });
 });
 
 // =========================================================================
@@ -811,6 +892,350 @@ app.MapPost("/api/admin/remove-family-member", async ([FromBody] JsonElement bod
     await db.SaveChangesAsync();
 
     return Results.Ok(new { success = true, message = $"Family account '@{subUser.Username}' removed successfully." });
+});
+
+// Admin: Delete any user account (cleans up family members, device bindings, and frees up HWIDs)
+app.MapPost("/api/admin/delete-user", async ([FromBody] JsonElement body, ServerDbContext db) =>
+{
+    if (!body.TryGetProperty("userId", out var uidProp) || !uidProp.TryGetInt32(out var userId))
+        return Results.BadRequest(new { success = false, message = "Valid userId required." });
+
+    var user = await db.Users.FindAsync(userId);
+    if (user == null)
+        return Results.NotFound(new { success = false, message = "User not found." });
+
+    if (string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase) && user.Id == 1)
+        return Results.BadRequest(new { success = false, message = "Cannot delete primary administrator account." });
+
+    // 1. Remove child family members if any
+    var familyMembers = await db.Users.Where(u => u.ParentUserId == user.Id).ToListAsync();
+    foreach (var fm in familyMembers)
+    {
+        var fmDevices = await db.UserDevices.Where(ud => ud.UserId == fm.Id).ToListAsync();
+        db.UserDevices.RemoveRange(fmDevices);
+        db.Users.Remove(fm);
+    }
+
+    // 2. Remove user devices
+    var userDevices = await db.UserDevices.Where(ud => ud.UserId == user.Id).ToListAsync();
+    db.UserDevices.RemoveRange(userDevices);
+
+    // 3. Clear association in registered devices
+    var boundDevices = await db.Devices.Where(d => d.AssociatedUserId == user.Id).ToListAsync();
+    foreach (var dev in boundDevices)
+    {
+        dev.AssociatedUserId = null;
+        dev.IsTrialConsumed = false;
+    }
+
+    // 4. Remove user
+    db.Users.Remove(user);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { success = true, message = $"Account '@{user.Username}' and associated devices deleted successfully." });
+});
+
+// =========================================================================
+// 4.5 CLIENT-FACING FAMILY / TEAM MANAGEMENT (Only for Subscribed Users)
+// =========================================================================
+
+app.MapGet("/api/user/family-members", async ([FromQuery] string? parentUsername, [FromQuery] int? parentUserId, ServerDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(parentUsername) && !parentUserId.HasValue)
+        return Results.BadRequest(new { success = false, message = "Parent identifier required." });
+
+    ServerUser? parent = null;
+    if (!string.IsNullOrWhiteSpace(parentUsername))
+    {
+        var clean = parentUsername.Trim().ToLower();
+        parent = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == clean);
+    }
+    if (parent == null && parentUserId.HasValue && parentUserId.Value > 0)
+    {
+        parent = await db.Users.FindAsync(parentUserId.Value);
+    }
+
+    if (parent == null)
+        return Results.NotFound(new { success = false, message = "User not found." });
+
+    bool isSubscribed = (parent.Status == nameof(UserSubscriptionStatus.Subscribed) &&
+                         parent.SubscriptionExpiresAt.HasValue &&
+                         parent.SubscriptionExpiresAt.Value > DateTime.UtcNow) ||
+                        string.Equals(parent.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+    var members = await db.Users
+        .Where(u => u.ParentUserId == parent.Id)
+        .OrderByDescending(u => u.CreatedAt)
+        .Select(u => new
+        {
+            id = u.Id,
+            username = u.Username,
+            email = u.Email,
+            createdAt = u.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+            status = u.Status
+        })
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        success = true,
+        isSubscribed = isSubscribed,
+        maxSlots = 2,
+        usedSlots = members.Count,
+        availableSlots = Math.Max(0, 2 - members.Count),
+        members = members
+    });
+});
+
+app.MapPost("/api/user/create-family-member", async ([FromBody] JsonElement body, ServerDbContext db) =>
+{
+    string parentUsername = body.TryGetProperty("parentUsername", out var pu) ? pu.GetString() ?? "" : "";
+    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.TryGetInt32(out var idVal) ? idVal : null;
+    string newUsername = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+    string newPassword = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+    string email = body.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
+
+    ServerUser? parent = null;
+    if (!string.IsNullOrWhiteSpace(parentUsername))
+    {
+        var clean = parentUsername.Trim().ToLower();
+        parent = await db.Users.FirstOrDefaultAsync(user => user.Username.ToLower() == clean);
+    }
+    if (parent == null && parentUserId.HasValue && parentUserId.Value > 0)
+    {
+        parent = await db.Users.FindAsync(parentUserId.Value);
+    }
+
+    if (parent == null)
+        return Results.NotFound(new { success = false, message = "User account not found." });
+
+    // CRITICAL: Only Subscribed users (or Admin) can create sub-accounts!
+    bool isSubscribed = (parent.Status == nameof(UserSubscriptionStatus.Subscribed) &&
+                         parent.SubscriptionExpiresAt.HasValue &&
+                         parent.SubscriptionExpiresAt.Value > DateTime.UtcNow) ||
+                        string.Equals(parent.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+
+    if (!isSubscribed)
+    {
+        return Results.Json(new
+        {
+            success = false,
+            message = "Creating team/family users is reserved exclusively for Subscribed users. Upgrade your subscription to unlock this feature."
+        }, statusCode: 403);
+    }
+
+    if (parent.ParentUserId.HasValue)
+    {
+        return Results.BadRequest(new { success = false, message = "Sub-accounts cannot create other sub-accounts." });
+    }
+
+    var cleanUsername = newUsername.Trim();
+    if (cleanUsername.Length < 3)
+        return Results.BadRequest(new { success = false, message = "Username must be at least 3 characters." });
+
+    if (newPassword.Length < 4)
+        return Results.BadRequest(new { success = false, message = "Password must be at least 4 characters." });
+
+    if (await db.Users.AnyAsync(u => u.Username.ToLower() == cleanUsername.ToLower()))
+        return Results.Conflict(new { success = false, message = $"Username '@{cleanUsername}' is already taken." });
+
+    // Max 2 sub-accounts limit
+    var currentCount = await db.Users.CountAsync(u => u.ParentUserId == parent.Id);
+    if (currentCount >= 2)
+    {
+        return Results.BadRequest(new { success = false, message = "You have reached the maximum limit of 2 sub-accounts." });
+    }
+
+    var subUser = new ServerUser
+    {
+        Username = cleanUsername,
+        Email = email.Trim(),
+        PasswordHash = PasswordSecurity.HashPassword(newPassword),
+        Role = "User",
+        Status = parent.Status,
+        SubscriptionExpiresAt = parent.SubscriptionExpiresAt,
+        ParentUserId = parent.Id,
+        MaxDevices = 3,
+        IsApproved = true,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    db.Users.Add(subUser);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new
+    {
+        success = true,
+        message = $"User '@{cleanUsername}' created successfully! They can now log in using this subscription.",
+        member = new
+        {
+            id = subUser.Id,
+            username = subUser.Username,
+            email = subUser.Email,
+            createdAt = subUser.CreatedAt.ToString("yyyy-MM-dd HH:mm"),
+            status = subUser.Status
+        }
+    });
+});
+
+app.MapPost("/api/user/remove-family-member", async ([FromBody] JsonElement body, ServerDbContext db) =>
+{
+    string parentUsername = body.TryGetProperty("parentUsername", out var pu) ? pu.GetString() ?? "" : "";
+    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.TryGetInt32(out var idVal) ? idVal : null;
+    int subUserId = body.TryGetProperty("subUserId", out var sid) && sid.TryGetInt32(out var sVal) ? sVal : 0;
+
+    ServerUser? parent = null;
+    if (!string.IsNullOrWhiteSpace(parentUsername))
+    {
+        var clean = parentUsername.Trim().ToLower();
+        parent = await db.Users.FirstOrDefaultAsync(user => user.Username.ToLower() == clean);
+    }
+    if (parent == null && parentUserId.HasValue && parentUserId.Value > 0)
+    {
+        parent = await db.Users.FindAsync(parentUserId.Value);
+    }
+
+    if (parent == null)
+        return Results.NotFound(new { success = false, message = "User not found." });
+
+    var subUser = await db.Users.FindAsync(subUserId);
+    if (subUser == null || subUser.ParentUserId != parent.Id)
+        return Results.NotFound(new { success = false, message = "Sub-account not found or not owned by you." });
+
+    var userDevices = await db.UserDevices.Where(ud => ud.UserId == subUserId).ToListAsync();
+    db.UserDevices.RemoveRange(userDevices);
+    db.Users.Remove(subUser);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { success = true, message = $"Account '@{subUser.Username}' removed successfully. Slot freed up." });
+});
+
+// =========================================================================
+// 5. AUTO-UPDATE & APP RELEASE ENDPOINTS
+// =========================================================================
+
+// Public endpoint: Check for updates
+app.MapGet("/api/app/check-update", async ([FromQuery] string? currentVersion, ServerDbContext db, HttpContext http) =>
+{
+    var latest = await db.AppReleases.Where(r => r.IsActive).OrderByDescending(r => r.PublishedAt).FirstOrDefaultAsync();
+    var currStr = (currentVersion ?? "2.5.0").TrimStart('v', 'V');
+    var lateStr = (latest?.Version ?? "2.5.0").TrimStart('v', 'V');
+
+    bool hasUpdate = false;
+    if (Version.TryParse(currStr, out var vCurr) && Version.TryParse(lateStr, out var vLate))
+    {
+        hasUpdate = vLate > vCurr;
+    }
+    else
+    {
+        hasUpdate = !string.Equals(currStr, lateStr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    var downloadUrl = latest?.DownloadUrl ?? "/downloads/SupportToolKit.exe";
+    if (!downloadUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+    {
+        downloadUrl = $"{http.Request.Scheme}://{http.Request.Host}{downloadUrl}";
+    }
+
+    return Results.Ok(new CheckUpdateResponse(
+        HasUpdate: hasUpdate,
+        LatestVersion: latest?.Version ?? "2.5.0",
+        CurrentVersion: currentVersion ?? "2.5.0",
+        DownloadUrl: downloadUrl,
+        ReleaseNotes: latest?.ReleaseNotes ?? "No update notes available.",
+        IsMandatory: latest?.IsMandatory ?? false,
+        FileSize: latest?.FileSize ?? 0,
+        PublishedAt: latest?.PublishedAt.ToString("yyyy-MM-dd HH:mm UTC") ?? DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm UTC")
+    ));
+});
+
+// Admin endpoint: Get current release metadata
+app.MapGet("/api/admin/latest-release", async (ServerDbContext db) =>
+{
+    var latest = await db.AppReleases.Where(r => r.IsActive).OrderByDescending(r => r.PublishedAt).FirstOrDefaultAsync();
+    return Results.Ok(latest ?? new AppRelease { Version = "2.5.0", ReleaseNotes = "Initial Release" });
+});
+
+// Admin endpoint: Publish release via metadata / URL
+app.MapPost("/api/admin/publish-release", async ([FromBody] PublishReleaseRequest req, ServerDbContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Version))
+        return Results.BadRequest(new { success = false, message = "Version number is required." });
+
+    var release = new AppRelease
+    {
+        Version = req.Version.Trim(),
+        ReleaseNotes = req.ReleaseNotes?.Trim() ?? string.Empty,
+        DownloadUrl = req.DownloadUrl?.Trim() ?? "/downloads/SupportToolKit.exe",
+        IsMandatory = req.IsMandatory,
+        PublishedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    db.AppReleases.Add(release);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { success = true, message = $"Release v{release.Version} published successfully!", release });
+});
+
+// Admin endpoint: Upload new SupportToolKit.exe file directly to server
+app.MapPost("/api/admin/upload-release-file", async (HttpRequest request, ServerDbContext db, IWebHostEnvironment env) =>
+{
+    if (!request.HasFormContentType)
+        return Results.BadRequest(new { success = false, message = "Multipart form data expected." });
+
+    var form = await request.ReadFormAsync();
+    var file = form.Files["file"];
+    var version = form["version"].ToString().Trim();
+    var notes = form["notes"].ToString().Trim();
+    var isMandatory = bool.TryParse(form["isMandatory"], out var mand) && mand;
+
+    if (file == null || file.Length == 0)
+        return Results.BadRequest(new { success = false, message = "Executable file is required." });
+
+    if (string.IsNullOrWhiteSpace(version))
+        return Results.BadRequest(new { success = false, message = "Version number is required." });
+
+    var downloadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot"), "downloads");
+    Directory.CreateDirectory(downloadsFolder);
+
+    var targetFilePath = Path.Combine(downloadsFolder, "SupportToolKit.exe");
+
+    // Copy uploaded file
+    using (var stream = new FileStream(targetFilePath, FileMode.Create))
+    {
+        await file.CopyToAsync(stream);
+    }
+
+    // Compute SHA256 and size
+    string hashHex;
+    long fileSize = new FileInfo(targetFilePath).Length;
+    using (var sha = System.Security.Cryptography.SHA256.Create())
+    using (var fs = File.OpenRead(targetFilePath))
+    {
+        hashHex = Convert.ToHexString(sha.ComputeHash(fs));
+    }
+
+    var release = new AppRelease
+    {
+        Version = version,
+        ReleaseNotes = notes,
+        DownloadUrl = "/downloads/SupportToolKit.exe",
+        IsMandatory = isMandatory,
+        FileSize = fileSize,
+        FileHash = hashHex,
+        PublishedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+
+    db.AppReleases.Add(release);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { 
+        success = true, 
+        message = $"SupportToolKit.exe (v{version}) uploaded and published! File size: {fileSize / (1024 * 1024)} MB.",
+        release 
+    });
 });
 
 app.Run();

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -18,6 +20,9 @@ public sealed class TelegramPollingService : BackgroundService
     private readonly IConfiguration _config;
     private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(35) };
     private long _offset = 0;
+
+    public static readonly ConcurrentDictionary<string, bool> ApprovedUsersCache = new(StringComparer.OrdinalIgnoreCase);
+    public static readonly ConcurrentDictionary<string, bool> RejectedUsersCache = new(StringComparer.OrdinalIgnoreCase);
 
     public TelegramPollingService(IServiceProvider services, IConfiguration config)
     {
@@ -74,6 +79,10 @@ public sealed class TelegramPollingService : BackgroundService
                             {
                                 await HandleCallbackQueryAsync(cb);
                             }
+                            else if (update.TryGetProperty("message", out var msg))
+                            {
+                                await HandleTextMessageAsync(msg);
+                            }
                         }
                     }
                 }
@@ -92,16 +101,88 @@ public sealed class TelegramPollingService : BackgroundService
 
     private async Task HandleCallbackQueryAsync(JsonElement cb)
     {
+        var queryId = cb.TryGetProperty("id", out var qid) ? qid.GetString() ?? "" : "";
+        var data = cb.TryGetProperty("data", out var d) ? d.GetString() ?? "" : "";
+
         try
         {
-            var data = cb.TryGetProperty("data", out var d) ? d.GetString() ?? "" : "";
-            var queryId = cb.TryGetProperty("id", out var qid) ? qid.GetString() ?? "" : "";
-
             using var scope = _services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
             var telegram = scope.ServiceProvider.GetRequiredService<TelegramNotifier>();
 
-            // 1. sub:{months}:{userId} -> Extend/Activate subscription
+            // 1. appr:{username}:{shortHwid} -> Approve user registration
+            if (data.StartsWith("appr:", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = data.Split(':');
+                if (parts.Length >= 2)
+                {
+                    var targetUsername = parts[1].Trim();
+                    ApprovedUsersCache[targetUsername] = true;
+                    RejectedUsersCache.TryRemove(targetUsername, out _);
+
+                    var user = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == targetUsername.ToLower());
+                    if (user != null)
+                    {
+                        user.IsApproved = true;
+                        var baseDate = (user.SubscriptionExpiresAt.HasValue && user.SubscriptionExpiresAt.Value > DateTime.UtcNow)
+                            ? user.SubscriptionExpiresAt.Value
+                            : DateTime.UtcNow;
+
+                        user.SubscriptionExpiresAt = baseDate.AddMonths(1);
+                        user.Status = nameof(UserSubscriptionStatus.Subscribed);
+
+                        // Unblock devices
+                        var boundHwids = await db.UserDevices.Where(ud => ud.UserId == user.Id).Select(ud => ud.HardwareId).ToListAsync();
+                        foreach (var hw in boundHwids)
+                        {
+                            var dev = await db.Devices.FirstOrDefaultAsync(dev => dev.HardwareId == hw);
+                            if (dev != null) { dev.IsBlocked = false; dev.BlockReason = null; }
+                        }
+                        if (!string.IsNullOrWhiteSpace(user.LastLoginHwid))
+                        {
+                            var origDev = await db.Devices.FirstOrDefaultAsync(dev => dev.HardwareId == user.LastLoginHwid);
+                            if (origDev != null) { origDev.IsBlocked = false; origDev.BlockReason = null; }
+                        }
+
+                        await db.SaveChangesAsync();
+                        await telegram.AnswerCallbackQueryAsync(queryId, $"✅ {user.Username} APPROVED!");
+                        await telegram.SendApprovalNotificationAsync(user.Username, "Approved (1 Month Subscribed)");
+                        return;
+                    }
+                    else
+                    {
+                        await telegram.AnswerCallbackQueryAsync(queryId, $"✅ '{targetUsername}' approval cached!");
+                        await telegram.SendApprovalNotificationAsync(targetUsername, "Approval token recorded for workstation");
+                        return;
+                    }
+                }
+            }
+
+            // 2. rejc:{username}:{shortHwid} -> Reject user registration
+            if (data.StartsWith("rejc:", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = data.Split(':');
+                if (parts.Length >= 2)
+                {
+                    var targetUsername = parts[1].Trim();
+                    RejectedUsersCache[targetUsername] = true;
+                    ApprovedUsersCache.TryRemove(targetUsername, out _);
+
+                    var user = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == targetUsername.ToLower());
+                    if (user != null)
+                    {
+                        user.IsApproved = false;
+                        user.Status = nameof(UserSubscriptionStatus.Suspended);
+                        await db.SaveChangesAsync();
+                    }
+
+                    await telegram.AnswerCallbackQueryAsync(queryId, $"❌ '{targetUsername}' REJECTED.");
+                    await telegram.SendRejectionNotificationAsync(targetUsername);
+                    return;
+                }
+            }
+
+            // 3. sub:{months}:{userId} -> Extend/Activate subscription
             if (data.StartsWith("sub:", StringComparison.OrdinalIgnoreCase))
             {
                 var parts = data.Split(':');
@@ -116,6 +197,10 @@ public sealed class TelegramPollingService : BackgroundService
 
                         user.SubscriptionExpiresAt = baseDate.AddMonths(months);
                         user.Status = nameof(UserSubscriptionStatus.Subscribed);
+                        user.IsApproved = true;
+
+                        ApprovedUsersCache[user.Username] = true;
+                        RejectedUsersCache.TryRemove(user.Username, out _);
 
                         // Unblock all devices bound to this user
                         var boundHwids = await db.UserDevices.Where(ud => ud.UserId == user.Id).Select(ud => ud.HardwareId).ToListAsync();
@@ -129,7 +214,6 @@ public sealed class TelegramPollingService : BackgroundService
                             }
                         }
 
-                        // Also unblock the original registered device if any
                         if (!string.IsNullOrWhiteSpace(user.LastLoginHwid))
                         {
                             var origDev = await db.Devices.FirstOrDefaultAsync(d => d.HardwareId == user.LastLoginHwid);
@@ -149,7 +233,7 @@ public sealed class TelegramPollingService : BackgroundService
                 }
             }
 
-            // 2. ext:{days}:{userId} -> Extend 24h trial
+            // 4. ext:{days}:{userId} -> Extend 24h trial
             if (data.StartsWith("ext:", StringComparison.OrdinalIgnoreCase))
             {
                 var parts = data.Split(':');
@@ -164,6 +248,10 @@ public sealed class TelegramPollingService : BackgroundService
 
                         user.TrialExpiresAt = baseDate.AddDays(days);
                         user.Status = nameof(UserSubscriptionStatus.Trial);
+                        user.IsApproved = true;
+
+                        ApprovedUsersCache[user.Username] = true;
+                        RejectedUsersCache.TryRemove(user.Username, out _);
 
                         if (!string.IsNullOrWhiteSpace(user.LastLoginHwid))
                         {
@@ -183,7 +271,7 @@ public sealed class TelegramPollingService : BackgroundService
                 }
             }
 
-            // 3. blk:{shortHwid} -> Block device
+            // 5. blk:{shortHwid} -> Block device
             if (data.StartsWith("blk:", StringComparison.OrdinalIgnoreCase))
             {
                 var shortHwid = data.Substring(4);
@@ -197,11 +285,92 @@ public sealed class TelegramPollingService : BackgroundService
                     return;
                 }
             }
+
+            // Default acknowledgement to avoid endless button loading spinner
+            if (!string.IsNullOrWhiteSpace(queryId))
+            {
+                await telegram.AnswerCallbackQueryAsync(queryId, "Action acknowledged.");
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[Telegram Callback Handling Error] {ex.Message}");
+            if (!string.IsNullOrWhiteSpace(queryId))
+            {
+                try
+                {
+                    using var scope = _services.CreateScope();
+                    var telegram = scope.ServiceProvider.GetRequiredService<TelegramNotifier>();
+                    await telegram.AnswerCallbackQueryAsync(queryId, "Error processing action.");
+                }
+                catch { }
+            }
+        }
+    }
+
+    private async Task HandleTextMessageAsync(JsonElement msg)
+    {
+        try
+        {
+            var text = msg.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var telegram = scope.ServiceProvider.GetRequiredService<TelegramNotifier>();
+
+            // /approve {username}
+            if (text.StartsWith("/approve", StringComparison.OrdinalIgnoreCase) || text.StartsWith("approve", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    var username = parts[1].Trim().TrimStart('@');
+                    ApprovedUsersCache[username] = true;
+                    RejectedUsersCache.TryRemove(username, out _);
+
+                    var user = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+                    if (user != null)
+                    {
+                        user.IsApproved = true;
+                        var baseDate = (user.SubscriptionExpiresAt.HasValue && user.SubscriptionExpiresAt.Value > DateTime.UtcNow)
+                            ? user.SubscriptionExpiresAt.Value
+                            : DateTime.UtcNow;
+                        user.SubscriptionExpiresAt = baseDate.AddMonths(1);
+                        user.Status = nameof(UserSubscriptionStatus.Subscribed);
+                        await db.SaveChangesAsync();
+                        await telegram.SendApprovalNotificationAsync(user.Username, "Approved (1 Month Subscribed via Chat Command)");
+                    }
+                    else
+                    {
+                        await telegram.SendApprovalNotificationAsync(username, "Approval cached for workstation");
+                    }
+                }
+            }
+            // /reject {username}
+            else if (text.StartsWith("/reject", StringComparison.OrdinalIgnoreCase) || text.StartsWith("reject", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2)
+                {
+                    var username = parts[1].Trim().TrimStart('@');
+                    RejectedUsersCache[username] = true;
+                    ApprovedUsersCache.TryRemove(username, out _);
+
+                    var user = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+                    if (user != null)
+                    {
+                        user.IsApproved = false;
+                        user.Status = nameof(UserSubscriptionStatus.Suspended);
+                        await db.SaveChangesAsync();
+                    }
+                    await telegram.SendRejectionNotificationAsync(username);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Telegram Text Message Error] {ex.Message}");
         }
     }
 }
-

@@ -8,6 +8,7 @@ public sealed class ServerDbContext : DbContext
     public DbSet<ServerUser> Users => Set<ServerUser>();
     public DbSet<DeviceRegistration> Devices => Set<DeviceRegistration>();
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
+    public DbSet<AppRelease> AppReleases => Set<AppRelease>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public ServerDbContext(DbContextOptions<ServerDbContext> options) : base(options)
@@ -36,6 +37,13 @@ public sealed class ServerDbContext : DbContext
             entity.ToTable("UserDevices");
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.UserId, e.HardwareId });
+        });
+
+        modelBuilder.Entity<AppRelease>(entity =>
+        {
+            entity.ToTable("AppReleases");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Version).IsRequired().HasMaxLength(50);
         });
 
         modelBuilder.Entity<AuditLog>(entity =>

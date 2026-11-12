@@ -423,7 +423,8 @@
                     <p>Central Cloud Management — Motherboard Anti-Abuse &amp; 3-Device Subscriptions</p>
                 </div>
             </div>
-            <div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn btn-indigo" onclick="openReleaseModal()">🚀 App Releases &amp; Auto-Update</button>
                 <button class="btn" onclick="fetchDashboardData()">🔄 Refresh</button>
             </div>
         </header>
@@ -657,6 +658,7 @@
                             <button class="btn btn-success btn-sm" onclick="extendSubscription(${u.id}, 1)">+1M</button>
                             <button class="btn btn-success btn-sm" onclick="extendSubscription(${u.id}, 3)">+3M</button>
                             ${u.lastLoginHwid ? `<button class="btn btn-danger btn-sm" onclick="blockDevice('${u.lastLoginHwid}', true)">Block</button>` : ''}
+                            ${u.role !== 'Admin' && u.id !== 1 ? `<button class="btn btn-danger btn-sm" onclick="deleteUserAccount(${u.id}, '${escapeHtml(u.username)}')">🗑️ Delete</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -858,6 +860,22 @@
             }
         }
 
+        async function deleteUserAccount(userId, username) {
+            if (!confirm(`Permanently delete account @${username}?\nThis will remove the user, any child family members, and free up all bound devices.`)) return;
+            const res = await fetch('/api/admin/delete-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userId })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert(data.message || 'User deleted successfully.');
+                fetchDashboardData();
+            } else {
+                alert(data.message || 'Failed to delete user.');
+            }
+        }
+
         async function extendSubscription(userId, months) {
             if (!confirm(`Add ${months} month(s) subscription to this account?`)) return;
             const res = await fetch('/api/admin/extend-subscription', {
@@ -902,6 +920,116 @@
             if (id === 'userSettingsModal') currentModalUserId = null;
         }
 
+        async function openReleaseModal() {
+            try {
+                const res = await fetch('/api/admin/latest-release');
+                if (res.ok) {
+                    const rel = await res.json();
+                    document.getElementById('currentLiveVersionText').textContent = `v${rel.version || '2.5.0'}`;
+                    document.getElementById('currentLiveDateText').textContent = rel.publishedAt || '';
+                    document.getElementById('currentLiveUrlText').textContent = rel.downloadUrl || '';
+                    document.getElementById('currentLiveNotesText').textContent = rel.releaseNotes || 'None';
+                }
+            } catch { }
+
+            document.getElementById('releaseModal').style.display = 'flex';
+        }
+
+        function switchReleaseTab(tab) {
+            if (tab === 'file') {
+                document.getElementById('tabFileRelease').style.display = 'block';
+                document.getElementById('tabUrlRelease').style.display = 'none';
+                document.getElementById('tabBtnFile').className = 'btn btn-indigo btn-sm';
+                document.getElementById('tabBtnUrl').className = 'btn btn-sm';
+                document.getElementById('tabBtnUrl').style.background = '#334155';
+            } else {
+                document.getElementById('tabFileRelease').style.display = 'none';
+                document.getElementById('tabUrlRelease').style.display = 'block';
+                document.getElementById('tabBtnFile').className = 'btn btn-sm';
+                document.getElementById('tabBtnFile').style.background = '#334155';
+                document.getElementById('tabBtnUrl').className = 'btn btn-indigo btn-sm';
+            }
+        }
+
+        async function submitUploadRelease() {
+            const fileInput = document.getElementById('releaseFileInput');
+            const version = document.getElementById('releaseVersionInput').value.trim();
+            const notes = document.getElementById('releaseNotesInput').value.trim();
+            const isMandatory = document.getElementById('releaseMandatoryCheck').checked;
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('Please select the SupportToolKit.exe file to upload.');
+                return;
+            }
+
+            if (!version) {
+                alert('Please enter the version number (e.g. 2.6.0).');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('version', version);
+            formData.append('notes', notes);
+            formData.append('isMandatory', isMandatory);
+
+            const uploadBtn = document.getElementById('btnDoUpload');
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '⏳ Uploading Executable... Please wait';
+
+            try {
+                const res = await fetch('/api/admin/upload-release-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('🎉 Release published successfully! All users will receive this update.');
+                    closeModal('releaseModal');
+                    fetchDashboardData();
+                } else {
+                    alert('Upload failed: ' + (data.message || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Upload error: ' + err.message);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '🚀 Upload & Publish Release to All Users';
+            }
+        }
+
+        async function submitUrlRelease() {
+            const version = document.getElementById('urlVersionInput').value.trim();
+            const downloadUrl = document.getElementById('urlDownloadInput').value.trim();
+            const notes = document.getElementById('urlNotesInput').value.trim();
+            const isMandatory = document.getElementById('urlMandatoryCheck').checked;
+
+            if (!version || !downloadUrl) {
+                alert('Version and Download URL are required.');
+                return;
+            }
+
+            const res = await fetch('/api/admin/publish-release', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    version: version,
+                    downloadUrl: downloadUrl,
+                    releaseNotes: notes,
+                    isMandatory: isMandatory
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert('🎉 Release published successfully via URL!');
+                closeModal('releaseModal');
+                fetchDashboardData();
+            } else {
+                alert('Failed to publish release: ' + (data.message || 'Error'));
+            }
+        }
+
         function escapeHtml(text) {
             const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
             return (text || '').replace(/[&<>"']/g, m => map[m]);
@@ -909,7 +1037,99 @@
 
         fetchDashboardData();
         setInterval(fetchDashboardData, 30000);
-                        </script>
-</body>
+    </script>
 
+    <!-- Modal: App Releases & Auto-Update -->
+    <div id="releaseModal" class="modal-overlay">
+        <div class="modal-content" style="width: 720px;">
+            <div class="modal-header">
+                <h3>🚀 App Releases &amp; Auto-Update Management</h3>
+                <button class="close-btn" onclick="closeModal('releaseModal')">&times;</button>
+            </div>
+
+            <!-- Current Live Release Box -->
+            <div class="section-box" style="margin-bottom: 16px;">
+                <div class="section-title">
+                    <span>📡 Current Live Version on Server</span>
+                    <span id="currentLiveVersionText" style="color: #38bdf8; font-size: 15px; font-weight: 700;">v2.5.0</span>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                    <div><strong>Download URL:</strong> <span id="currentLiveUrlText" style="font-family: monospace;"></span></div>
+                    <div><strong>Published Date:</strong> <span id="currentLiveDateText"></span></div>
+                    <div><strong>Release Notes:</strong> <span id="currentLiveNotesText"></span></div>
+                </div>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                <button id="tabBtnFile" class="btn btn-indigo btn-sm" onclick="switchReleaseTab('file')">Option 1: Upload SupportToolKit.exe File</button>
+                <button id="tabBtnUrl" class="btn btn-sm" style="background: #334155;" onclick="switchReleaseTab('url')">Option 2: Direct URL / GitHub Release</button>
+            </div>
+
+            <!-- Tab 1: Upload .EXE -->
+            <div id="tabFileRelease" class="section-box">
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 14px;">
+                    Select the compiled <code>SupportToolKit.exe</code> from your computer. The server will store it in <code>/downloads/SupportToolKit.exe</code> and notify all client apps.
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New Version (e.g. 2.6.0)</label>
+                        <input type="text" id="releaseVersionInput" placeholder="2.6.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Select SupportToolKit.exe</label>
+                        <input type="file" id="releaseFileInput" accept=".exe" style="padding: 6px 10px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Release Notes (What's New)</label>
+                    <input type="text" id="releaseNotesInput" placeholder="e.g. Added multi-device family licensing & speed improvements">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" id="releaseMandatoryCheck">
+                        <span>Mandatory Update (Users must update to access the app)</span>
+                    </label>
+                </div>
+                <div style="text-align: right;">
+                    <button id="btnDoUpload" class="btn btn-success" onclick="submitUploadRelease()">🚀 Upload &amp; Publish Release to All Users</button>
+                </div>
+            </div>
+
+            <!-- Tab 2: Publish via External URL -->
+            <div id="tabUrlRelease" class="section-box" style="display: none;">
+                <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 14px;">
+                    Fastest option for large distribution without consuming server disk/bandwidth (e.g. Host on GitHub Releases or Cloudflare CDN).
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>New Version (e.g. 2.6.0)</label>
+                        <input type="text" id="urlVersionInput" placeholder="2.6.0">
+                    </div>
+                    <div class="form-group">
+                        <label>Download URL</label>
+                        <input type="text" id="urlDownloadInput" placeholder="https://github.com/.../SupportToolKit.exe">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Release Notes</label>
+                    <input type="text" id="urlNotesInput" placeholder="e.g. Feature updates and bug fixes">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer;">
+                        <input type="checkbox" id="urlMandatoryCheck">
+                        <span>Mandatory Update</span>
+                    </label>
+                </div>
+                <div style="text-align: right;">
+                    <button class="btn btn-indigo" onclick="submitUrlRelease()">🌐 Publish URL Release to All Users</button>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 10px;">
+                <button class="btn btn-sm" style="background: #334155;" onclick="closeModal('releaseModal')">Close</button>
+            </div>
+        </div>
+    </div>
+</body>
 </html>

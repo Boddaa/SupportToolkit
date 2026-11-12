@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MaterialDesignThemes.Wpf;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NetworkDiscoveryTool.Core.Models;
 using NetworkDiscoveryTool.Data;
 using NetworkDiscoveryTool.Services.Services;
@@ -18,28 +19,53 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AuthService _auth;
     private readonly ISettingsService _settings;
     private readonly TelegramNotificationService _telegramService;
+    private readonly CloudAuthService _cloudAuth;
     private bool _isLoadingSettings;
     private bool _isInitializing = true;
 
     // === Display Properties (read-only) ===
     public string DatabasePath => App.DatabasePath;
 
+    // === Family / Sub-User Management (Subscribers only) ===
+    public bool CanManageFamily => _currentUser.IsSubscribed || _currentUser.IsAdmin;
+    public bool IsFamilyLocked => !CanManageFamily;
+    public ObservableCollection<CloudAuthService.FamilyMemberItem> FamilyMembers { get; } = [];
+
+    [ObservableProperty] private string _familySlotsInfo = "0 of 2 Sub-Accounts Used";
+    [ObservableProperty] private string _newFamilyUsername = "";
+    [ObservableProperty] private string _newFamilyPassword = "";
+    [ObservableProperty] private string _newFamilyEmail = "";
+    [ObservableProperty] private string _familyErrorMessage = "";
+    [ObservableProperty] private string _familySuccessMessage = "";
+    [ObservableProperty] private bool _hasFamilyError;
+    [ObservableProperty] private bool _hasFamilySuccess;
+    [ObservableProperty] private bool _isFamilyLoading;
+    [ObservableProperty] private bool _canAddMoreFamily = true;
+
     public SettingsViewModel(
         IDbContextFactory<AppDbContext> contextFactory,
         CurrentUserService currentUser,
         AuthService auth,
         ISettingsService settings,
-        TelegramNotificationService telegramService)
+        TelegramNotificationService telegramService,
+        CloudAuthService cloudAuth)
     {
         _contextFactory = contextFactory;
         _currentUser = currentUser;
         _auth = auth;
         _settings = settings;
         _telegramService = telegramService;
+        _cloudAuth = cloudAuth;
         IsAdmin = currentUser.IsAdmin;
         _currentUser.UserChanged += () =>
         {
             IsAdmin = _currentUser.IsAdmin;
+            OnPropertyChanged(nameof(CanManageFamily));
+            OnPropertyChanged(nameof(IsFamilyLocked));
+            if (CanManageFamily)
+            {
+                _ = LoadFamilyMembersAsync();
+            }
             if (IsAdmin)
             {
                 LoadPendingUsers();
@@ -143,6 +169,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         try
         {
             IsAdmin = _currentUser.IsAdmin;
+            OnPropertyChanged(nameof(CanManageFamily));
+            OnPropertyChanged(nameof(IsFamilyLocked));
+            if (CanManageFamily)
+            {
+                _ = LoadFamilyMembersAsync();
+            }
             var all = await _settings.GetAllAsync();
 
             if (all.TryGetValue("Theme", out var theme)) SelectedTheme = theme;
@@ -412,6 +444,153 @@ public sealed partial class SettingsViewModel : ObservableObject
         StatusMessage = $"Deleted: {user.Username}";
     }
 
+    // === Family / Sub-User Management Commands ===
+
+    [RelayCommand]
+    public async Task LoadFamilyMembersAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_currentUser.Username)) return;
+
+        IsFamilyLoading = true;
+        FamilyErrorMessage = "";
+        try
+        {
+            var res = await _cloudAuth.GetFamilyMembersAsync(_currentUser.Username, _currentUser.UserId);
+            if (res.Success)
+            {
+                FamilyMembers.Clear();
+                foreach (var m in res.Members)
+                {
+                    FamilyMembers.Add(m);
+                }
+                FamilySlotsInfo = $"{res.UsedSlots} of {res.MaxSlots} Sub-Accounts Used";
+                CanAddMoreFamily = res.AvailableSlots > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            FamilyErrorMessage = $"Error loading members: {ex.Message}";
+        }
+        finally
+        {
+            IsFamilyLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CreateFamilyMemberAsync()
+    {
+        FamilyErrorMessage = "";
+        FamilySuccessMessage = "";
+        HasFamilyError = false;
+        HasFamilySuccess = false;
+
+        if (string.IsNullOrWhiteSpace(NewFamilyUsername) || string.IsNullOrWhiteSpace(NewFamilyPassword))
+        {
+            FamilyErrorMessage = "Username and password are required.";
+            HasFamilyError = true;
+            return;
+        }
+
+        if (NewFamilyUsername.Trim().Length < 3)
+        {
+            FamilyErrorMessage = "Username must be at least 3 characters.";
+            HasFamilyError = true;
+            return;
+        }
+
+        if (NewFamilyPassword.Length < 4)
+        {
+            FamilyErrorMessage = "Password must be at least 4 characters.";
+            HasFamilyError = true;
+            return;
+        }
+
+        IsFamilyLoading = true;
+        try
+        {
+            var (success, message) = await _cloudAuth.CreateFamilyMemberAsync(
+                _currentUser.Username,
+                _currentUser.UserId,
+                NewFamilyUsername,
+                NewFamilyPassword,
+                NewFamilyEmail);
+
+            if (success)
+            {
+                FamilySuccessMessage = message;
+                HasFamilySuccess = true;
+                NewFamilyUsername = "";
+                NewFamilyPassword = "";
+                NewFamilyEmail = "";
+                await LoadFamilyMembersAsync();
+            }
+            else
+            {
+                FamilyErrorMessage = message;
+                HasFamilyError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            FamilyErrorMessage = $"Failed to create account: {ex.Message}";
+            HasFamilyError = true;
+        }
+        finally
+        {
+            IsFamilyLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RemoveFamilyMemberAsync(CloudAuthService.FamilyMemberItem? member)
+    {
+        if (member == null || member.Id == 0) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Are you sure you want to remove family account '@{member.Username}'?\nThis will disconnect any devices using this sub-account.",
+            "Confirm Remove Account",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        IsFamilyLoading = true;
+        FamilyErrorMessage = "";
+        FamilySuccessMessage = "";
+        HasFamilyError = false;
+        HasFamilySuccess = false;
+
+        try
+        {
+            var (success, message) = await _cloudAuth.RemoveFamilyMemberAsync(
+                _currentUser.Username,
+                _currentUser.UserId,
+                member.Id);
+
+            if (success)
+            {
+                FamilySuccessMessage = message;
+                HasFamilySuccess = true;
+                await LoadFamilyMembersAsync();
+            }
+            else
+            {
+                FamilyErrorMessage = message;
+                HasFamilyError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            FamilyErrorMessage = $"Failed to remove account: {ex.Message}";
+            HasFamilyError = true;
+        }
+        finally
+        {
+            IsFamilyLoading = false;
+        }
+    }
+
     // === Theme ===
 
     public static void ApplyTheme(string theme)
@@ -461,17 +640,54 @@ public sealed partial class SettingsViewModel : ObservableObject
     // === Updates ===
 
     [RelayCommand]
-    private void CheckForUpdates()
+    private async Task CheckForUpdates()
     {
         LastUpdateCheck = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
-        StatusMessage = "You have the latest version";
+        StatusMessage = "Checking cloud server for updates...";
+
+        try
+        {
+            var updateService = App.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.Services.Services.AppUpdateService>();
+            var cloudAuth = App.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.Services.Services.CloudAuthService>();
+
+            var update = await updateService.CheckForUpdateAsync(cloudAuth.ServerBaseUrl);
+            if (update == null)
+            {
+                StatusMessage = "Unable to connect to cloud update server.";
+                return;
+            }
+
+            if (update.HasUpdate)
+            {
+                StatusMessage = $"New version v{update.LatestVersion} available!";
+                var res = System.Windows.MessageBox.Show(
+                    $"🎉 New version v{update.LatestVersion} is available!\n\nWhat's New in this Release:\n{update.ReleaseNotes}\n\nWould you like to download and update now? (The app will restart automatically in seconds)",
+                    "Update Available",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Information);
+
+                if (res == System.Windows.MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Downloading and applying update...";
+                    await updateService.DownloadAndApplyUpdateAsync(update.DownloadUrl);
+                }
+            }
+            else
+            {
+                StatusMessage = $"You are using the latest version (v{update.CurrentVersion}).";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Update check failed: {ex.Message}";
+        }
     }
 
     // === Application Information ===
 
     public void LoadAppInfo()
     {
-        AppVersion = Assembly.GetExecutingAssembly().GetName()?.Version?.ToString() ?? "1.0.0";
+        AppVersion = NetworkDiscoveryTool.Services.Services.AppUpdateService.CurrentVersion;
         AppFramework = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
         AppDatabase = "SQLite — network_discovery.db";
         AppLogPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");

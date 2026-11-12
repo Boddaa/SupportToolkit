@@ -436,6 +436,7 @@ public sealed partial class LoginViewModel : ObservableObject
             await _settings.SetAsync("Remembered_Username", user.Username);
             await _settings.SetAsync("Remembered_UserId", user.Id.ToString());
             await _settings.SetAsync("Remembered_Role", user.Role);
+            await _settings.SetAsync("Remembered_Status", user.Status ?? "Subscribed");
             await _settings.SetAsync("Remembered_Workstation", Environment.MachineName);
             await _settings.SetAsync("Remembered_LastActive", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         }
@@ -453,6 +454,7 @@ public sealed partial class LoginViewModel : ObservableObject
             await _settings.SetAsync("Remembered_Username", string.Empty);
             await _settings.SetAsync("Remembered_UserId", string.Empty);
             await _settings.SetAsync("Remembered_Role", string.Empty);
+            await _settings.SetAsync("Remembered_Status", string.Empty);
         }
         catch (Exception ex)
         {
