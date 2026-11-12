@@ -101,8 +101,8 @@ public sealed class TelegramPollingService : BackgroundService
 
     private async Task HandleCallbackQueryAsync(JsonElement cb)
     {
-        var queryId = cb.TryGetProperty("id", out var qid) ? qid.GetString() ?? "" : "";
-        var data = cb.TryGetProperty("data", out var d) ? d.GetString() ?? "" : "";
+        var queryId = cb.TryGetProperty("id", out var qid) && qid.ValueKind == JsonValueKind.String ? qid.GetString() ?? "" : "";
+        var data = cb.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() ?? "" : "";
 
         try
         {
@@ -312,7 +312,7 @@ public sealed class TelegramPollingService : BackgroundService
     {
         try
         {
-            var text = msg.TryGetProperty("text", out var t) ? t.GetString() ?? "" : "";
+            var text = msg.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() ?? "" : "";
             if (string.IsNullOrWhiteSpace(text)) return;
 
             using var scope = _services.CreateScope();

@@ -105,20 +105,20 @@ public sealed class TelegramNotificationService
                         var senderId = fromId.ToString();
                         if (string.Equals(senderId, AdminChatId.Trim(), StringComparison.OrdinalIgnoreCase))
                         {
-                            if (callbackQuery.TryGetProperty("data", out var dataProp))
+                            if (callbackQuery.TryGetProperty("data", out var dataProp) && dataProp.ValueKind == JsonValueKind.String)
                             {
                                 var data = dataProp.GetString() ?? "";
                                 if (data.StartsWith(targetApprove, StringComparison.OrdinalIgnoreCase))
                                 {
                                     // Acknowledge callback query
-                                    if (callbackQuery.TryGetProperty("id", out var queryId))
+                                    if (callbackQuery.TryGetProperty("id", out var queryId) && queryId.ValueKind == JsonValueKind.String)
                                         _ = AnswerCallbackQueryAsync(queryId.GetString(), "✅ User Approved!");
 
                                     return RemoteApprovalStatus.Approved;
                                 }
                                 if (data.StartsWith(targetReject, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    if (callbackQuery.TryGetProperty("id", out var queryId))
+                                    if (callbackQuery.TryGetProperty("id", out var queryId) && queryId.ValueKind == JsonValueKind.String)
                                         _ = AnswerCallbackQueryAsync(queryId.GetString(), "❌ User Rejected.");
 
                                     return RemoteApprovalStatus.Rejected;
@@ -137,7 +137,7 @@ public sealed class TelegramNotificationService
                         var senderId = fromId.ToString();
                         if (string.Equals(senderId, AdminChatId.Trim(), StringComparison.OrdinalIgnoreCase))
                         {
-                            if (msg.TryGetProperty("text", out var textProp))
+                            if (msg.TryGetProperty("text", out var textProp) && textProp.ValueKind == JsonValueKind.String)
                             {
                                 var text = textProp.GetString() ?? "";
                                 if (text.Contains($"/approve {username}", StringComparison.OrdinalIgnoreCase) ||

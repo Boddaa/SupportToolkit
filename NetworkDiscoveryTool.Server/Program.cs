@@ -989,11 +989,11 @@ app.MapGet("/api/user/family-members", async ([FromQuery] string? parentUsername
 
 app.MapPost("/api/user/create-family-member", async ([FromBody] JsonElement body, ServerDbContext db) =>
 {
-    string parentUsername = body.TryGetProperty("parentUsername", out var pu) ? pu.GetString() ?? "" : "";
-    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.TryGetInt32(out var idVal) ? idVal : null;
-    string newUsername = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
-    string newPassword = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
-    string email = body.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
+    string parentUsername = body.TryGetProperty("parentUsername", out var pu) && pu.ValueKind == JsonValueKind.String ? pu.GetString() ?? "" : "";
+    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.ValueKind == JsonValueKind.Number && pid.TryGetInt32(out var idVal) ? idVal : null;
+    string newUsername = body.TryGetProperty("username", out var u) && u.ValueKind == JsonValueKind.String ? u.GetString() ?? "" : "";
+    string newPassword = body.TryGetProperty("password", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() ?? "" : "";
+    string email = body.TryGetProperty("email", out var em) && em.ValueKind == JsonValueKind.String ? em.GetString() ?? "" : "";
 
     ServerUser? parent = null;
     if (!string.IsNullOrWhiteSpace(parentUsername))
@@ -1080,9 +1080,9 @@ app.MapPost("/api/user/create-family-member", async ([FromBody] JsonElement body
 
 app.MapPost("/api/user/remove-family-member", async ([FromBody] JsonElement body, ServerDbContext db) =>
 {
-    string parentUsername = body.TryGetProperty("parentUsername", out var pu) ? pu.GetString() ?? "" : "";
-    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.TryGetInt32(out var idVal) ? idVal : null;
-    int subUserId = body.TryGetProperty("subUserId", out var sid) && sid.TryGetInt32(out var sVal) ? sVal : 0;
+    string parentUsername = body.TryGetProperty("parentUsername", out var pu) && pu.ValueKind == JsonValueKind.String ? pu.GetString() ?? "" : "";
+    int? parentUserId = body.TryGetProperty("parentUserId", out var pid) && pid.ValueKind == JsonValueKind.Number && pid.TryGetInt32(out var idVal) ? idVal : null;
+    int subUserId = body.TryGetProperty("subUserId", out var sid) && sid.ValueKind == JsonValueKind.Number && sid.TryGetInt32(out var sVal) ? sVal : 0;
 
     ServerUser? parent = null;
     if (!string.IsNullOrWhiteSpace(parentUsername))

@@ -40,14 +40,14 @@ public sealed class AppUpdateService
                 var doc = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cts.Token).ConfigureAwait(false);
 
                 return new UpdateCheckResult(
-                    HasUpdate: doc.TryGetProperty("hasUpdate", out var hu) && hu.GetBoolean(),
-                    LatestVersion: doc.TryGetProperty("latestVersion", out var lv) ? lv.GetString() ?? CurrentVersion : CurrentVersion,
+                    HasUpdate: doc.TryGetProperty("hasUpdate", out var hu) && hu.ValueKind == JsonValueKind.True,
+                    LatestVersion: doc.TryGetProperty("latestVersion", out var lv) && lv.ValueKind == JsonValueKind.String ? lv.GetString() ?? CurrentVersion : CurrentVersion,
                     CurrentVersion: CurrentVersion,
-                    DownloadUrl: doc.TryGetProperty("downloadUrl", out var du) ? du.GetString() ?? "" : "",
-                    ReleaseNotes: doc.TryGetProperty("releaseNotes", out var rn) ? rn.GetString() ?? "" : "",
-                    IsMandatory: doc.TryGetProperty("isMandatory", out var im) && im.GetBoolean(),
-                    FileSize: doc.TryGetProperty("fileSize", out var fs) && fs.TryGetInt64(out var s) ? s : 0,
-                    PublishedAt: doc.TryGetProperty("publishedAt", out var pa) ? pa.GetString() ?? "" : ""
+                    DownloadUrl: doc.TryGetProperty("downloadUrl", out var du) && du.ValueKind == JsonValueKind.String ? du.GetString() ?? "" : "",
+                    ReleaseNotes: doc.TryGetProperty("releaseNotes", out var rn) && rn.ValueKind == JsonValueKind.String ? rn.GetString() ?? "" : "",
+                    IsMandatory: doc.TryGetProperty("isMandatory", out var im) && im.ValueKind == JsonValueKind.True,
+                    FileSize: doc.TryGetProperty("fileSize", out var fs) && fs.ValueKind == JsonValueKind.Number && fs.TryGetInt64(out var s) ? s : 0,
+                    PublishedAt: doc.TryGetProperty("publishedAt", out var pa) && pa.ValueKind == JsonValueKind.String ? pa.GetString() ?? "" : ""
                 );
             }
         }
