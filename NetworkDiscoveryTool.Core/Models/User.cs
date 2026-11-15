@@ -28,5 +28,11 @@ public sealed class User
 
     public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public bool IsSyncedWithCloud { get; set; } = true;
+
+    public DateTime? SubscriptionExpiresAt { get; set; }
+
+    public string? SyncPayload { get; set; }
+
     public ICollection<Scan> Scans { get; set; } = new List<Scan>();
 }

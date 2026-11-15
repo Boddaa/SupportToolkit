@@ -24,7 +24,8 @@ public sealed class LicenseService
         string HardwareId,
         DateTime ApprovedDate,
         bool IsActive,
-        string? PasswordHash = null);
+        string? PasswordHash = null,
+        DateTime? ExpiresAt = null);
 
     private sealed class LicenseStore
     {
@@ -66,7 +67,7 @@ public sealed class LicenseService
         return result;
     }
 
-    public void SaveApprovedLicense(string username, string? passwordHash = null)
+    public void SaveApprovedLicense(string username, string? passwordHash = null, DateTime? expiresAt = null)
     {
         try
         {
@@ -76,7 +77,8 @@ public sealed class LicenseService
             var hardwareId = HardwareIdService.GetHardwareId();
             var tokens = LoadTokens();
 
-            tokens[clean] = new LicenseToken(clean, hardwareId, DateTime.UtcNow, true, passwordHash);
+            var expiry = expiresAt ?? DateTime.UtcNow.AddDays(30);
+            tokens[clean] = new LicenseToken(clean, hardwareId, DateTime.UtcNow, true, passwordHash, expiry);
 
             var store = new LicenseStore { Users = tokens };
             var json = JsonSerializer.Serialize(store);
@@ -115,6 +117,12 @@ public sealed class LicenseService
             if (!token.IsActive)
             {
                 reason = "License is invalid or revoked.";
+                return false;
+            }
+
+            if (token.ExpiresAt.HasValue && token.ExpiresAt.Value < DateTime.UtcNow)
+            {
+                reason = "Your 30-day offline license has expired. Please connect to the internet to renew.";
                 return false;
             }
 

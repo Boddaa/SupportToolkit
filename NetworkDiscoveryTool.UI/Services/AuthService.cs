@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using NetworkDiscoveryTool.Core.Models;
@@ -86,12 +88,14 @@ public sealed class AuthService
                     cloudRes.ExpiresAt,
                     cloudRes.RemainingHours);
 
-                _licenseService.SaveApprovedLicense(cleanUsername);
+                _licenseService.SaveApprovedLicense(cleanUsername, PasswordHasher.HashPassword(password), cloudRes.ExpiresAt);
+
+                // Now that we have verified internet connectivity, trigger background sync for any unsynced offline accounts!
+                _ = Task.Run(() => SyncPendingUsersAsync());
+
                 return (true, appUser, null);
             }
-            else if (!string.IsNullOrWhiteSpace(cloudRes.Message) &&
-                     !cloudRes.Message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) &&
-                     !cloudRes.Message.Contains("connection error", StringComparison.OrdinalIgnoreCase))
+            else if (!string.IsNullOrWhiteSpace(cloudRes.Message) && !IsOfflineError(cloudRes.Message))
             {
                 // Explicit rejection from Cloud (wrong password, blocked, expired, etc.)
                 return (false, null, cloudRes.Message);
@@ -102,7 +106,47 @@ public sealed class AuthService
             Serilog.Log.Warning(ex, "Cloud authentication skipped or failed. Falling back to local offline verification.");
         }
 
-        // 2. Offline Fallback: ONLY permitted if cryptographically verified offline license exists for this user
+        // 2. Offline Fallback 1: Local SQLite Users Table (includes local admin: admin / 159357, and offline-registered accounts)
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var dbUser = context.Users.FirstOrDefault(u => u.Username.ToLower() == cleanUsername.ToLower());
+            if (dbUser != null && dbUser.IsApproved)
+            {
+                if (PasswordHasher.VerifyPassword(password, dbUser.PasswordHash, out _))
+                {
+                    // Check subscription expiry (except for built-in Administrator)
+                    if (cleanUsername.ToLower() != "admin" && dbUser.SubscriptionExpiresAt.HasValue && dbUser.SubscriptionExpiresAt.Value < DateTime.UtcNow)
+                    {
+                        return (false, null, "Your 30-day offline subscription has expired. Please connect to the internet to renew.");
+                    }
+
+                    double remainingHours = dbUser.SubscriptionExpiresAt.HasValue
+                        ? Math.Max(0, (dbUser.SubscriptionExpiresAt.Value - DateTime.UtcNow).TotalHours)
+                        : 720.0;
+
+                    var appUser = new AppUser(
+                        dbUser.Id,
+                        dbUser.Username,
+                        dbUser.Role ?? "Administrator",
+                        "Trial",
+                        dbUser.SubscriptionExpiresAt,
+                        Math.Round(remainingHours, 1));
+
+                    return (true, appUser, null);
+                }
+                else
+                {
+                    return (false, null, "Invalid password for this account.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Local database user verification failed.");
+        }
+
+        // 3. Offline Fallback 2: Cached License Token in license.lic
         if (_licenseService.IsLicenseValidOffline(cleanUsername, password, out var offlineReason))
         {
             return (true, new AppUser(1, cleanUsername, "User", "Subscribed"), null);
@@ -112,7 +156,7 @@ public sealed class AuthService
                                      offlineReason.Contains("No offline license", StringComparison.OrdinalIgnoreCase) ||
                                      offlineReason.Contains("No local license", StringComparison.OrdinalIgnoreCase)))
         {
-            return (false, null, "Could not connect to the cloud licensing server and no offline license is cached for this username. Please check your internet connection.");
+            return (false, null, "Could not connect to cloud server and no local offline account matches these credentials.");
         }
 
         return (false, null, offlineReason ?? "Cloud server is unreachable. Please verify your internet connection.");
@@ -203,18 +247,188 @@ public sealed class AuthService
         var cleanUser = username.Trim();
         var cleanPass = password;
         var cleanEmail = email.Trim();
+        var hwid = HardwareIdService.GetHardwareId();
 
-        // Central Cloud Registration (Anti-Cheat & Motherboard HWID enforcement)
+        // 1. Try Central Cloud Registration first
         try
         {
             var cloudRes = await _cloudAuth.RegisterAsync(cleanUser, cleanPass, cleanEmail);
-            return (cloudRes.Success, cloudRes.Message, cloudRes.Status);
+            if (cloudRes.Success)
+            {
+                var expiry = cloudRes.ExpiresAt ?? DateTime.UtcNow.AddDays(30);
+                SaveUserLocally(cleanUser, cleanPass, cleanEmail, hwid, isSynced: true, expiresAt: expiry);
+                _licenseService.SaveApprovedLicense(cleanUser, PasswordHasher.HashPassword(cleanPass), expiry);
+                return (true, cloudRes.Message, cloudRes.Status ?? "Trial");
+            }
+            else if (!IsOfflineError(cloudRes.Message))
+            {
+                // Explicit rejection from server (e.g. username taken, or device already bound)
+                return (false, cloudRes.Message, cloudRes.Status);
+            }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Cloud registration unreachable.");
-            return (false, "Could not connect to central licensing server. Please check your internet connection.", null);
+            Serilog.Log.Warning(ex, "Cloud registration unreachable. Falling back to offline local account creation.");
         }
+
+        // 2. OFFLINE FALLBACK: No internet connection!
+        // Create user locally with 30-Day Subscription (1 month) and mark for sync when internet connects.
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var existing = context.Users.FirstOrDefault(u => u.Username.ToLower() == cleanUser.ToLower());
+            if (existing != null)
+            {
+                return (false, $"Username '{cleanUser}' already exists locally on this machine.", null);
+            }
+
+            var subExpiry = DateTime.UtcNow.AddDays(30);
+            var passHash = PasswordHasher.HashPassword(cleanPass);
+            var encryptedSyncPass = EncryptForSync(cleanPass);
+
+            var localUser = new User
+            {
+                Username = cleanUser,
+                PasswordHash = passHash,
+                Email = cleanEmail,
+                HardwareId = hwid,
+                Role = "Administrator",
+                IsApproved = true,
+                CreatedAt = DateTime.UtcNow,
+                SubscriptionExpiresAt = subExpiry,
+                IsSyncedWithCloud = false,
+                SyncPayload = encryptedSyncPass
+            };
+
+            context.Users.Add(localUser);
+            context.SaveChanges();
+
+            // Save active offline license token for 30 days
+            _licenseService.SaveApprovedLicense(cleanUser, passHash, subExpiry);
+
+            Serilog.Log.Information("Offline account '{Username}' created successfully with 30-day subscription.", cleanUser);
+            return (true, "Account created in Offline Mode with a 30-Day Subscription! It will automatically sync to your cloud database as soon as internet is connected.", "Trial");
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Error(ex, "Failed to create local offline account.");
+            return (false, $"Local registration error: {ex.Message}", null);
+        }
+    }
+
+    private void SaveUserLocally(string username, string password, string email, string hwid, bool isSynced, DateTime expiresAt)
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var user = context.Users.FirstOrDefault(u => u.Username.ToLower() == username.ToLower());
+            if (user == null)
+            {
+                user = new User
+                {
+                    Username = username,
+                    PasswordHash = PasswordHasher.HashPassword(password),
+                    Email = email,
+                    HardwareId = hwid,
+                    Role = "Administrator",
+                    IsApproved = true,
+                    CreatedAt = DateTime.UtcNow,
+                    SubscriptionExpiresAt = expiresAt,
+                    IsSyncedWithCloud = isSynced
+                };
+                context.Users.Add(user);
+            }
+            else
+            {
+                user.PasswordHash = PasswordHasher.HashPassword(password);
+                user.SubscriptionExpiresAt = expiresAt;
+                user.IsSyncedWithCloud = isSynced;
+                user.IsApproved = true;
+            }
+            context.SaveChanges();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Could not save/update user locally.");
+        }
+    }
+
+    public async Task SyncPendingUsersAsync()
+    {
+        try
+        {
+            using var context = _contextFactory.CreateDbContext();
+            var pending = context.Users
+                .Where(u => !u.IsSyncedWithCloud && !string.IsNullOrEmpty(u.SyncPayload) && u.Username.ToLower() != "admin")
+                .ToList();
+
+            if (pending.Count == 0) return;
+
+            Serilog.Log.Information("Found {Count} pending offline user(s) to sync to cloud.", pending.Count);
+
+            foreach (var user in pending)
+            {
+                var plainPass = DecryptForSync(user.SyncPayload);
+                if (string.IsNullOrWhiteSpace(plainPass)) continue;
+
+                var res = await _cloudAuth.SyncOfflineUserAsync(
+                    user.Username,
+                    plainPass,
+                    user.Email,
+                    user.HardwareId ?? HardwareIdService.GetHardwareId(),
+                    Environment.MachineName);
+
+                if (res.Success || (res.Message != null && res.Message.Contains("already", StringComparison.OrdinalIgnoreCase)))
+                {
+                    user.IsSyncedWithCloud = true;
+                    user.SyncPayload = null;
+                    if (res.ExpiresAt.HasValue) user.SubscriptionExpiresAt = res.ExpiresAt;
+                    Serilog.Log.Information("User '{Username}' successfully synced to cloud server.", user.Username);
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Warning(ex, "Error syncing pending offline users to cloud.");
+        }
+    }
+
+    private static string EncryptForSync(string plainText)
+    {
+        if (string.IsNullOrEmpty(plainText)) return string.Empty;
+        var bytes = Encoding.UTF8.GetBytes(plainText);
+        var enc = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+        return Convert.ToBase64String(enc);
+    }
+
+    private static string DecryptForSync(string? cipherText)
+    {
+        if (string.IsNullOrWhiteSpace(cipherText)) return string.Empty;
+        try
+        {
+            var bytes = Convert.FromBase64String(cipherText);
+            var dec = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(dec);
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static bool IsOfflineError(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return true;
+        return message.Contains("unreachable", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("connection error", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("timed out", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("No such host", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("refused", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("reset", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("Could not connect", StringComparison.OrdinalIgnoreCase);
     }
 
     public (bool Success, string Message) Register(string username, string password, string email = "")

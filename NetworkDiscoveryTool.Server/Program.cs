@@ -301,8 +301,8 @@ app.MapPost("/api/auth/register", async (
         ), statusCode: 403);
     }
 
-    // New valid machine -> Grant exactly 24-Hour Free Trial
-    var trialEnd = DateTime.UtcNow.AddDays(1);
+    // New valid machine -> Grant 30-Day Free Trial / Subscription
+    var trialEnd = DateTime.UtcNow.AddDays(30);
     var user = new ServerUser
     {
         Username = username,
@@ -371,7 +371,112 @@ app.MapPost("/api/auth/register", async (
     var remainingHours = (trialEnd - DateTime.UtcNow).TotalHours;
     return Results.Ok(new AuthResponse(
         Success: true,
-        Message: "Account created! 24-Hour Free Trial is active on this device.",
+        Message: "Account created! 30-Day Subscription is active on this device.",
+        Status: nameof(UserSubscriptionStatus.Trial),
+        Role: user.Role,
+        ExpiresAt: trialEnd,
+        RemainingHours: Math.Round(remainingHours, 1),
+        UserId: user.Id
+    ));
+});
+
+// =========================================================================
+// 2B. OFFLINE USER SYNCHRONIZATION (When internet becomes available)
+// =========================================================================
+app.MapPost("/api/auth/sync-offline-user", async (
+    [FromBody] RegisterRequest req,
+    ServerDbContext db,
+    TelegramNotifier telegram,
+    HttpContext http) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrWhiteSpace(req.Password))
+        return Results.BadRequest(new AuthResponse(false, "Username and password are required."));
+
+    var username = req.Username.Trim();
+    var hwid = req.HardwareId?.Trim() ?? string.Empty;
+
+    // Check if user already exists
+    var existingUser = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+    if (existingUser != null)
+    {
+        return Results.Ok(new AuthResponse(
+            Success: true,
+            Message: "User already synchronized on server.",
+            Status: existingUser.Status,
+            Role: existingUser.Role,
+            ExpiresAt: existingUser.TrialExpiresAt,
+            UserId: existingUser.Id
+        ));
+    }
+
+    var trialEnd = DateTime.UtcNow.AddDays(30);
+    var user = new ServerUser
+    {
+        Username = username,
+        Email = req.Email?.Trim() ?? string.Empty,
+        PasswordHash = PasswordSecurity.HashPassword(req.Password),
+        Role = "User",
+        Status = nameof(UserSubscriptionStatus.Trial),
+        TrialStartedAt = DateTime.UtcNow,
+        TrialExpiresAt = trialEnd,
+        CreatedAt = DateTime.UtcNow,
+        LastLoginHwid = hwid,
+        LastLoginIp = http.Connection.RemoteIpAddress?.ToString(),
+        MaxDevices = 3
+    };
+
+    var existingDevice = await db.Devices.FirstOrDefaultAsync(d => d.HardwareId == hwid);
+    if (existingDevice == null && !string.IsNullOrWhiteSpace(hwid))
+    {
+        existingDevice = new DeviceRegistration
+        {
+            HardwareId = hwid,
+            MachineName = req.MachineName?.Trim() ?? "Workstation",
+            FirstSeenAt = DateTime.UtcNow,
+            TrialExpiresAt = trialEnd,
+            IsTrialConsumed = false,
+            LastSeenAt = DateTime.UtcNow
+        };
+        db.Devices.Add(existingDevice);
+    }
+    else if (existingDevice != null)
+    {
+        existingDevice.TrialExpiresAt = trialEnd;
+        existingDevice.LastSeenAt = DateTime.UtcNow;
+    }
+
+    db.Users.Add(user);
+    await db.SaveChangesAsync();
+
+    if (existingDevice != null)
+    {
+        existingDevice.AssociatedUserId = user.Id;
+        db.UserDevices.Add(new UserDevice
+        {
+            UserId = user.Id,
+            HardwareId = hwid,
+            MachineName = req.MachineName?.Trim() ?? "Primary Workstation",
+            BoundAt = DateTime.UtcNow,
+            LastUsedAt = DateTime.UtcNow,
+            IsActive = true
+        });
+        await db.SaveChangesAsync();
+    }
+
+    _ = Task.Run(async () =>
+    {
+        await telegram.SendTrialRegistrationAlertAsync(
+            user.Id,
+            $"{user.Username} (Offline Synced)",
+            string.IsNullOrWhiteSpace(user.Email) ? "None" : user.Email,
+            hwid,
+            req.MachineName ?? "PC");
+    });
+
+    var remainingHours = (trialEnd - DateTime.UtcNow).TotalHours;
+    return Results.Ok(new AuthResponse(
+        Success: true,
+        Message: "Offline account synchronized with 30-Day Subscription.",
         Status: nameof(UserSubscriptionStatus.Trial),
         Role: user.Role,
         ExpiresAt: trialEnd,

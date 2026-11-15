@@ -9,7 +9,7 @@ namespace NetworkDiscoveryTool.Services.Services;
 
 public sealed class CloudAuthService
 {
-    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(30) };
+    private static readonly HttpClient HttpClient = new() { Timeout = TimeSpan.FromSeconds(3) };
     
     public string ServerBaseUrl { get; set; } = "http://supporttoolkit.runasp.net";
 
@@ -153,6 +153,34 @@ public sealed class CloudAuthService
         catch (Exception ex)
         {
             return new CloudAuthResult(false, $"Cloud server unreachable: {ex.Message}");
+        }
+    }
+
+    public async Task<CloudAuthResult> SyncOfflineUserAsync(string username, string password, string? email, string hardwareId, string? machineName)
+    {
+        try
+        {
+            var url = $"{ServerBaseUrl.TrimEnd('/')}/api/auth/sync-offline-user";
+            var payload = new RegisterPayload(username, password, email, hardwareId, machineName);
+
+            var response = await HttpClient.PostAsJsonAsync(url, payload).ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            bool success = GetBoolean(root, "success");
+            string msg = GetString(root, "message", "") ?? "";
+            string? status = GetString(root, "status");
+            string? role = GetString(root, "role", "User");
+            DateTime? expiresAt = GetDateTime(root, "expiresAt");
+            double? remainingHours = GetDouble(root, "remainingHours");
+            int? userId = GetInt(root, "userId");
+
+            return new CloudAuthResult(success, msg, status, role, expiresAt, remainingHours, userId);
+        }
+        catch (Exception ex)
+        {
+            return new CloudAuthResult(false, $"Cloud sync unreachable: {ex.Message}");
         }
     }
 

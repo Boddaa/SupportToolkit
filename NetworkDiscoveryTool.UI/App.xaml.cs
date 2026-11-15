@@ -154,6 +154,9 @@ public partial class App : System.Windows.Application
             try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"Email\" TEXT"); } catch { }
             try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"HardwareId\" TEXT"); } catch { }
             try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"CreatedAt\" TEXT"); } catch { }
+            try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"IsSyncedWithCloud\" INTEGER NOT NULL DEFAULT 1"); } catch { }
+            try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"SubscriptionExpiresAt\" TEXT"); } catch { }
+            try { ctx.Database.ExecuteSqlRaw("ALTER TABLE \"Users\" ADD COLUMN \"SyncPayload\" TEXT"); } catch { }
 
             // Ensure existing rows do not have NULL values
             try { ctx.Database.ExecuteSqlRaw("UPDATE \"Users\" SET \"Email\" = '' WHERE \"Email\" IS NULL"); } catch { }
@@ -283,6 +286,17 @@ public partial class App : System.Windows.Application
             {
                 settingsService.SetAsync("CloudServerUrl", "http://supporttoolkit.runasp.net").GetAwaiter().GetResult();
             }
+            // Setup automatic offline sync listener when internet is detected
+            var authService = themeScope.ServiceProvider.GetRequiredService<NetworkDiscoveryTool.UI.Services.AuthService>();
+            _ = Task.Run(() => authService.SyncPendingUsersAsync());
+
+            System.Net.NetworkInformation.NetworkChange.NetworkAvailabilityChanged += (_, args) =>
+            {
+                if (args.IsAvailable)
+                {
+                    _ = Task.Run(() => authService.SyncPendingUsersAsync());
+                }
+            };
         }
         catch
         {
